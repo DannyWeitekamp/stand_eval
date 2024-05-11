@@ -1,9 +1,12 @@
+import json
+from apprentice.shared import SAI
+import numpy as np
+
 def _load_profile_line(agent, line):
     item = json.loads(line)
     profile_sais = [SAI(x) for x in item['sais']]
     state = item['state']
-    if(is_start):
-        state = agent.standardize_state(state)
+    state = agent.standardize_state(state)
         
     return state, item, profile_sais
 
@@ -30,7 +33,7 @@ def _eval_diffs(agent, state, item, profile_sais):
     diff_stats = {"-": list(missing), "+": list(extra), "=" : list(correct), "first_correct": first_correct}
     return diff_stats
 
-def _print_diffs(state_stats):
+def _print_diffs(state_stats, print_correct=False):
     for prob_stats in state_stats:
         n_diffs = len(prob_stats['-']) + len(prob_stats['+'])
         
@@ -70,8 +73,10 @@ def _eval_cert(agent, state, item, profile_sais, skill_app_map, when_preds, cert
 
         # Insert when_pred and certainty
         index, correct = skill_app_map[sa]
-        when_preds[index] = sa.certainty
-        certainties[index] = sa.when_pred
+
+        when_preds[index] = sa.when_pred
+        if(hasattr(sa, 'certainty')):
+            certainties[index] = sa.certainty
 
 # ----------------------------------------------
 #  Evaluate Performance Totals
@@ -107,27 +112,27 @@ def _eval_totals(state_stats):
     comission_rate /= len(state_stats)
     omission_score /= len(state_stats)
     comission_score /=  len(state_stats)
-    return {"step_score" : step_score, "completeness" : completeness, "correctness" : correctness
-            "ommision_rate" : omission_rate, "commision_rate" : comission_rate,
-            "ommision_score" : omission_score, "commision_score" : comission_score,
+    return {"step_score" : step_score, "completeness" : completeness, "correctness" : correctness,
+            "omission_rate" : omission_rate, "comission_rate" : comission_rate,
+            "omission_score" : omission_score, "comission_score" : comission_score,
             }
 
 def _print_totals(total_stats, to_print=[]):
     if(not isinstance(to_print, list)):
         to_print = list(total_stats.keys())
     for meausre_name in to_print:
-        value = total_stats[value];
+        value = total_stats[meausre_name];
         title = " ".join([x.capitalize() for x in meausre_name.split("_")])
-        print(f"{cap} : {value*100:.2f}")
+        print(f"{title} : {value*100:.2f}%")
 
 
 def eval_holdout_stats(agent, profile, 
-                       skill_app_map={}, skill_app_records=[],
+                       skill_app_map={},
                        return_state_stats=False,
                        return_cert_stats=False,
-                       print_diffs=True, 
+                       print_diffs=False, 
+                       print_correct=False,
                        print_totals=True,
-                       print_correct=False, 
                      **kwargs):
     ''' Evaluates an agent's correctness and completeness against a holdout 
         completeness profile consisting of states and correct actions at those states.
@@ -135,11 +140,13 @@ def eval_holdout_stats(agent, profile,
     import json, os
     print("START EVAL COMPLETENESS")
 
-    state_stats, when_preds, certainties = [], [], []
+    state_stats = []
+    when_preds = [0]*len(skill_app_map)
+    certainties = [0]*len(skill_app_map)
     with open(profile, 'r') as profile_f:
         for line_ind, line in enumerate(profile_f):
             # Read a line from the profile
-            state, item, profile_sais = agent._load_profile_line(line)
+            state, item, profile_sais = _load_profile_line(agent, line)
             prob_stats = {"problem": item['problem'], 'hist' : item['hist']}
 
             # Calc stats of how agent's proposed actions on 'state' differ from ground-truth  
@@ -151,10 +158,11 @@ def eval_holdout_stats(agent, profile,
                 # Update skill_app_map, when_preds, certainties
                 _eval_cert(agent, state, item, profile_sais, skill_app_map, when_preds, certainties)
     
+    # print("WWWW", when_preds)
     total_stats = _eval_totals(state_stats)
 
     if(print_diffs):
-        _print_diffs(state_stats)
+        _print_diffs(state_stats, print_correct)
 
     if(print_totals):
         _print_totals(total_stats, print_totals)
@@ -171,87 +179,128 @@ def eval_holdout_stats(agent, profile,
 
     return out
 
-
+# def collate_stats(stats_list):
+#     return {k: np.array([dic[k] for dic in LD],dtype=np.float64) for k in LD[0]}
 
 # -----------------------------------------------------------
 # Certainty Stats for Thrashing, TPR etc. 
-
-def eval_total_cert_stats(skill_app_map, holdout_certs, holdout_when_preds, cert_threshs=[.9,1.0]):
-    corrs = np.array([rew > 0 for ind, rew in coskill_app_map.values()], dtype=np.float64)
+def eval_total_cert_stats(skill_app_map, holdout_certs, cert_threshs=[.9,1.0]):
+    corrs = np.array([rew > 0 for ind, rew in skill_app_map.values()], dtype=np.bool_)
     incorrs = ~corrs
     L = len(holdout_certs)
-
-    # Thrashing : error re-occurance rates
-    cert_FP_reocc    = np.zeros(L-1,dtype=np.float64)
-    cert_FN_reocc    = np.zeros(L-1,dtype=np.float64)
-    cert_error_reocc = np.zeros(L-1,dtype=np.float64)
-
-    wp_FP_reocc    = np.zeros(L-1,dtype=np.float64)
-    wp_FN_reocc    = np.zeros(L-1,dtype=np.float64)
-    wp_error_reocc = np.zeros(L-1,dtype=np.float64)
     
+    # Vacillation Rate : Proportion of errors that reoccur
+    FP_reocc    = np.zeros(L-1, dtype=np.float64)
+    FN_reocc    = np.zeros(L-1, dtype=np.float64)
+    error_reocc = np.zeros(L-1, dtype=np.float64)
+    total_FP_reocc, total_pTPs = 0, 0 
+    total_FN_reocc, total_pTNs = 0, 0 
+    total_error_reocc, total_pTs = 0, 0 
 
     # Productive Monotonicity: Proportion of certainty changes
     #  that correctly move toward 1.0 if correct or -1.0 if incorrect. 
-    cert_prod_monot  = np.zeros(L-1, dtype=np.bool)
-    wp_prod_monot  = np.zeros(L-1, dtype=np.bool)
-    total_d_certs, total_prod_d_certs = 0, 0
-    total_d_wps, total_prod_d_wps = 0, 0
+    prod_monot  = np.zeros(L-1, dtype=np.float64)
+    total_prod_d, total_d  = 0, 0
     
     # Certainty Preds @ thresh 
-    cert_preds_at_thresh  = [np.zeros(L, dtype=np.float64) for _ in range(cert_threshs)]  
+    precisions_at_thresh  = [np.zeros(L, dtype=np.float64) for _ in range(len(cert_threshs))]
+    total_TP_at_thresh = [0] * len(cert_threshs)
+    total_PP_at_thresh = [0] * len(cert_threshs)
 
-    for i, (certs, wps) in enumerate(zip(holdout_certs, holdout_when_preds)):
-        cert_TPs = certs[corrs] > 0
-        cert_TNs = certs[incorrs] < 0
+    for i, certs in enumerate(holdout_certs):
+        # Fill in missing certs with 0 predictions
+        certs = np.pad(certs, (0, len(skill_app_map)-len(certs)), constant_values=(0, 0))
+        TPs = certs[corrs] > 0.0
+        TNs = certs[incorrs] < 0.0
 
-        wp_TPs = wps[corrs] > 0
-        wp_TNs = wps[incorrs] < 0
-
-        # Update delta based measures
+        # Calc delta based measures
         if(i != 0):
             k = i-1
 
             # -- Error Re-occurance ---
-            #   certainty
-            cert_FP_reoccs = ~cert_TPs[prev_cert_TPs]
-            cert_FN_reoccs = ~cert_TNs[prev_cert_TNs] 
-            n_cert_FP_reoccs, n_cert_FPs = np.count_nonzero(cert_FP_reoccs), len(cert_FP_reoccs)
-            n_cert_FN_reoccs, n_cert_FNs = np.count_nonzero(cert_FN_reoccs), len(cert_FN_reoccs)
+            FP_reoccs = ~TPs[prev_TPs]
+            FN_reoccs = ~TNs[prev_TNs]
+            n_FP_reoccs, n_pTPs = np.count_nonzero(FP_reoccs), len(prev_TPs)
+            n_FN_reoccs, n_pTNs = np.count_nonzero(FN_reoccs), len(prev_TNs)
+            n_reoccs, n_pTs = n_FP_reoccs + n_FN_reoccs, n_pTPs + n_pTNs
 
-            #   when_pred
-            wp_FP_reoccs = ~wp_TPs[prev_wp_TPs]
-            wp_FN_reoccs = ~wp_TNs[prev_wp_TNs]
-            n_wp_FP_reoccs, n_wp_FPs = np.count_nonzero(wp_FP_reoccs), len(wp_FP_reoccs)
-            n_wp_FN_reoccs, n_wp_FNs = np.count_nonzero(wp_FN_reoccs), len(wp_FN_reoccs)
+            FP_reocc[k] = (n_FP_reoccs / n_pTPs) if n_pTPs > 0 else 0.0
+            FN_reocc[k] = (n_FN_reoccs / n_pTNs) if n_pTNs > 0 else 0.0
+            error_reocc[k] = (n_reoccs / n_pTs) if n_pTs > 0 else 0.0
 
-            # --- Productive Monotonicity --- 
-            
-            #   certainty
+            total_FP_reocc += n_FP_reoccs
+            total_pTPs += n_pTPs
+            total_FN_reocc += n_FN_reoccs
+            total_pTNs += n_pTNs
+            total_error_reocc += n_reoccs
+            total_pTs += n_pTs
+
+            # --- Productive Monotonicity ---             
             d_certs = certs-prev_certs
-            prod_pos_certs = (d_certs > 0) & corrs
-            prod_neg_certs = (d_certs < 0) & incorrs
-            prod_certs = (prod_pos_certs | prod_neg_certs)[d_certs != 0]
-            n_prod_d_certs, n_d_certs = np.count_nonzero(prod_certs), len(prod_certs)
-            cert_prod_monot[k] = (n_prod_d_certs / n_d_certs) if n_d_certs > 0 else 1.0
-            total_prod_d_certs += n_prod_d_certs
-            total_d_certs += n_d_certs
+            prod_pos = (d_certs > 0) & corrs
+            prod_neg = (d_certs < 0) & incorrs
+            prods = (prod_pos | prod_neg)[d_certs != 0]
+            n_prod_d, n_d = np.count_nonzero(prods), len(prods)
 
-            #   when_pred
-            d_wps = wps-prev_wps
-            prod_pos_wps = (d_wps > 0) & corrs
-            prod_neg_wps = (d_wps < 0) & incorrs
-            prod_wps = (prod_pos_wps | prod_neg_wps)[d_wps != 0]
-            n_prod_d_wps, n_d_wps = np.count_nonzero(prod_wps), len(prod_wps)
-            wp_prod_monot[k] = (n_prod_d_wps / n_d_wps) if n_d_wps > 0 else 1.0
-            total_prod_d_wps += n_prod_d_wps
-            total_d_wps += n_d_wps
+            prod_monot[k] = (n_prod_d / n_d) if n_d > 0 else 1.0
+            total_prod_d += n_prod_d
+            total_d += n_d
 
-        prev_certs, prev_wps = certs, wps
-        prev_cert_TPs, prev_wp_TPs = cert_TPs, wp_TPs
-        prev_wp_TNs, prev_wp_TNs = cert_TNs, wp_TNs
+        # Update Precision
+        for t, thresh in enumerate(cert_threshs):
+            pred = certs >= thresh;
 
-    corr = np.array(len(skill_app_map), dtype=np.float64)
-    corr = np.array(len(skill_app_map), dtype=np.float64)
+            # True positives over predicted positives
+            TP = np.count_nonzero(pred & corrs)
+            PP = np.count_nonzero(pred)
+            total_TP_at_thresh[t] += TP
+            total_PP_at_thresh[t] += PP
+            precisions_at_thresh[t][i] = (TP / PP) if PP > 0 else 1.0
 
+        prev_certs = certs
+        prev_TPs = TPs
+        prev_TNs = TNs
 
+    out = {}
+    for t, thresh in enumerate(cert_threshs):
+        total_TP = total_TP_at_thresh[t]
+        total_PP = total_PP_at_thresh[t]
+
+        out[("total_precision", thresh)] = (total_TP / total_PP) if total_PP > 0 else 1.0
+        out[("precision", thresh)] = precisions_at_thresh[t]
+
+    out.update({
+        "FP_reocc" : FP_reocc,
+        "FN_reocc" : FN_reocc,
+        "error_reocc" : error_reocc,
+        "total_FP_reocc" : total_FP_reocc / total_pTPs if total_pTPs > 0 else 1.0,
+        "total_FN_reocc" : total_FN_reocc / total_pTNs if total_pTPs > 0 else 1.0,
+        "total_error_reocc" : total_error_reocc / total_pTs if total_pTs > 0 else 1.0,
+
+        "prod_monot" : prod_monot,
+        "total_prod_monot" : (total_prod_d / total_d) if total_d > 0 else 1.0,
+    })
+
+    return out
+
+# -------------
+# Extra Utilities
+
+def avg_stats(stats_list, ignore=['certainties', 'when_preds']):
+    keys = [k for k in stats_list[0].keys() if k not in ignore]
+    accum_d = {}
+    for k in keys:
+        accum_d[k] = [stats_list[0][k]]
+        
+    for i in range(1,len(stats_list)):
+        stats_d = stats_list[i]
+        for k in keys:
+            accum_d[k].append(stats_d[k]) 
+    
+    tot_stat_d = {}
+    for k,v in accum_d.items():
+        print(k, v)
+        tot_stat_d[k] = {"avg" : np.mean(v,axis=0),
+                         "std" : np.std(v,axis=0),
+                         "N"  : len(v)}
+    return tot_stat_d
