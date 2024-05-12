@@ -17,9 +17,9 @@ def _load_profile_line(agent, line):
 def _eval_diffs(agent, state, item, profile_sais):    
     # Run act_all in eval_mode to give its most conservative guess of the conflict set
     is_start = len(item['hist'])==0
-    prob_uid = state.get("__uid__")                
+    prob_uid = state.get("__uid__") if is_start else None
     agent_sais = agent.act_all(state, return_kind='sai',
-     is_start=is_start, prob_uid=prob_uid, eval_mode=True)
+       is_start=is_start, prob_uid=prob_uid, eval_mode=True)
 
 
     # Find the difference of the sets 
@@ -54,7 +54,7 @@ def _print_diffs(state_stats, print_correct=False):
 def _eval_cert(agent, state, item, profile_sais, skill_app_map, when_preds, certainties):
     # Run act_all so that it gives skill apps including negative ones
     is_start = len(item['hist'])==0
-    prob_uid = state.get("__uid__")
+    prob_uid = state.get("__uid__") if is_start else None
     agent_skill_apps = agent.act_all(state, return_kind='skill_app',
         is_start=is_start, prob_uid=prob_uid,
         add_out_of_process=True,
@@ -130,7 +130,7 @@ def eval_holdout_stats(agent, profile,
                        skill_app_map={},
                        return_state_stats=False,
                        return_cert_stats=False,
-                       print_diffs=False, 
+                       print_diffs=True, 
                        print_correct=False,
                        print_totals=True,
                      **kwargs):
@@ -139,6 +139,10 @@ def eval_holdout_stats(agent, profile,
     '''
     import json, os
     print("START EVAL COMPLETENESS")
+
+    # out = agent.eval_completeness(profile, print_diffs=False)
+    # print("COMPL:", out['completeness'])
+    # print("------------")
 
     state_stats = []
     when_preds = [0]*len(skill_app_map)
@@ -299,7 +303,7 @@ def avg_stats(stats_list, ignore=['certainties', 'when_preds']):
     
     tot_stat_d = {}
     for k,v in accum_d.items():
-        print(k, v)
+        # print(k, v)
         tot_stat_d[k] = {"avg" : np.mean(v,axis=0),
                          "std" : np.std(v,axis=0),
                          "N"  : len(v)}

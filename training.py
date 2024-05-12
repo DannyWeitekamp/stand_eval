@@ -5,6 +5,7 @@ from eval_funcs import eval_holdout_stats, eval_total_cert_stats, avg_stats
 from tutorenvs.fractions_std import FractionArithmetic
 from tutorenvs.multicolumn_std import MultiColumnAddition
 from tutorenvs.trainer import Trainer, AuthorTrainer
+from agent_configs import make_agent
 
 
 
@@ -31,13 +32,29 @@ def make_env(domain):
 
     return env
 
+mc_start_probs = [
+    ["574", "798"],
+    ["248", "315"],
+    ["872", "371"],
+    ["394", "452"],
+    ["252", "533"],
+    ["334", "943"],
+    ["189", "542"],
+]
+
 
 def run_training(agent, domain, n=100, eval_kwargs={}):
     env = make_env(domain)
     profile = f"gt-{domain}.txt"
     if(not os.path.exists(profile)):
         make_completeness_profile(env, 100, profile)
-    trainer = AuthorTrainer(agent, env, n_problems=n)
+
+    problems = []
+    if(domain == "mc"):
+        problems = mc_start_probs
+
+    trainer = AuthorTrainer(agent, env, 
+        problem_set=problems, n_problems=n)
 
     # Set up 
     c_log = []
@@ -49,6 +66,15 @@ def run_training(agent, domain, n=100, eval_kwargs={}):
                 return_state_stats=False,
                 **eval_kwargs)
         )
+        if(getattr(agent, 'process_lrn_mech', None) is not None):
+            print(agent.process_lrn_mech.grammar)
+        # print("---------------")
+        # for skill in agent.skills.values():
+        #     print()
+        #     print(skill)
+        #     print(skill.when_lrn_mech)
+        # print("---------------")
+
     trainer.on_problem_end = on_problem_end 
 
     trainer.start()
@@ -148,7 +174,7 @@ def train_or_load_condition(domain, when, use_proc_lrn,
 
 
 if __name__ == "__main__":
-    from agent_configs import make_agent
+    
 
     # train_or_load_condition("mc", "decision_tree", False, n_prob=100, reps=3)
     # train_or_load_condition("mc", "random_forest", False, n_prob=100, reps=1)
@@ -161,24 +187,27 @@ if __name__ == "__main__":
     #train_or_load_condition("frac", "stand", True, n_prob=100, reps=3)
     
     
-    train_or_load_condition("mc", "decision_tree", False, n_prob=100, reps=10)
+    # train_or_load_condition("mc", "decision_tree", False, n_prob=100, reps=10)
     train_or_load_condition("mc", "stand", False, n_prob=100, reps=10)
-    train_or_load_condition("mc", "stand", True, n_prob=100, reps=10)
-    train_or_load_condition("mc", "random_forest", False, n_prob=100, reps=3)
+    # train_or_load_condition("mc", "stand-relaxed", False, n_prob=100, reps=10)
+    # train_or_load_condition("mc", "stand", True, n_prob=100, reps=20)
+    #train_or_load_condition("mc", "random_forest", False, n_prob=100, reps=3)
+    
+    train_or_load_condition("mc", "decision_tree", False, n_prob=100, reps=20)
+    train_or_load_condition("mc", "stand", False, n_prob=100, reps=20)
+    #train_or_load_condition("mc", "stand-relaxed", False, n_prob=100, reps=10)
+    #train_or_load_condition("mc", "stand", True, n_prob=100, reps=20)
+    train_or_load_condition("mc", "random_forest", False, n_prob=100, reps=6)
 
     train_or_load_condition("frac", "decision_tree", False, n_prob=100, reps=10)
     train_or_load_condition("frac", "stand", False, n_prob=100, reps=10)
-    train_or_load_condition("frac", "stand", True, n_prob=100, reps=10)
+    #train_or_load_condition("frac", "stand", True, n_prob=100, reps=10)
     train_or_load_condition("frac", "random_forest", False, n_prob=100, reps=3)
 
-    train_or_load_condition("mc", "decision_tree", False, n_prob=100, reps=20)
-    train_or_load_condition("mc", "stand", False, n_prob=100, reps=20)
-    train_or_load_condition("mc", "stand", True, n_prob=100, reps=20)
-    train_or_load_condition("mc", "random_forest", False, n_prob=100, reps=6)
 
     train_or_load_condition("frac", "decision_tree", False, n_prob=100, reps=20)
     train_or_load_condition("frac", "stand", False, n_prob=100, reps=20)
-    train_or_load_condition("frac", "stand", True, n_prob=100, reps=20)
+    #train_or_load_condition("frac", "stand", True, n_prob=100, reps=20)
     train_or_load_condition("frac", "random_forest", False, n_prob=100, reps=6)
 
     

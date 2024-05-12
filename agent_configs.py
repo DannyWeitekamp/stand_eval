@@ -46,6 +46,17 @@ STAND = {
     "action_chooser" : "max_which_utility",
     "suggest_uncert_neg" : True,
 }
+STAND_Relaxed ={
+    "when_learner": "stand",
+    "which_learner": "when_prediction",
+    "action_chooser" : "max_which_utility",
+    "suggest_uncert_neg" : True,
+    "when_args" : {
+        **common['when_args'],
+        "split_choice" : "all_near_max"
+    }
+}
+
 
 DT = {
     "when_learner": "decision_tree",
@@ -53,6 +64,9 @@ DT = {
 
 RF = {
     "when_learner": "random_forest",   
+    "which_learner": "when_prediction",
+    "action_chooser" : "max_which_utility",
+    "suggest_uncert_neg" : True,
 }
 
 agent_configs = {
@@ -71,6 +85,11 @@ agent_configs = {
         **common,
         **mc_basic,
         **STAND,  
+    },
+    ("mc", "stand-relaxed", False) : {
+        **common,
+        **mc_basic,
+        **STAND_Relaxed,  
     },
     ("mc", "stand", True) : {
         **common,
@@ -95,6 +114,11 @@ agent_configs = {
         **common,
         **frac_basic,
         **STAND,  
+    },
+    ("frac", "stand", False) : {
+        **common,
+        **frac_basic,
+        **STAND_Relaxed,  
     },
     ("frac", "stand", True) : {
         **common,
