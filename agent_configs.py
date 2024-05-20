@@ -5,9 +5,11 @@ common = {
     "planner" : "setchaining",
     "explanation_choice" : "least_operations",
     "find_neighbors" : True,
+    "error_on_bottom_out" : False,
     "when_args": {
         "encode_relative" : True,
-        "check_sanity" : False
+        "check_sanity" : False,
+        "one_hot" : True
     },
 }
 
@@ -22,6 +24,7 @@ mc_proc_lrn = {
 }
 
 frac_basic = {
+    "search_depth" : 1,
     "function_set": ['Multiply', 'Add'],
     "feature_set": ['Equals'],
     "one_skill_per_match" : True,
@@ -38,6 +41,10 @@ proc_lrn = {
     "track_rollout_preseqs" : True,
     "action_filter_args" : {"thresholds": [.3, 0, -.5, -.75]},
     "implicit_reward_kinds" : ["unordered_groups"]
+}
+
+DT = {
+    "when_learner": "decision_tree",
 }
 
 STAND = {
@@ -57,13 +64,15 @@ STAND_Relaxed ={
     }
 }
 
-
-DT = {
-    "when_learner": "decision_tree",
-}
-
 RF = {
     "when_learner": "random_forest",   
+    "which_learner": "when_prediction",
+    "action_chooser" : "max_which_utility",
+    "suggest_uncert_neg" : True,
+}
+
+XGB = {
+    "when_learner": "xg_boost",   
     "which_learner": "when_prediction",
     "action_chooser" : "max_which_utility",
     "suggest_uncert_neg" : True,
@@ -80,6 +89,11 @@ agent_configs = {
         **common,
         **mc_basic,
         **RF,
+    },
+    ("mc", "xg_boost", False) : {
+        **common,
+        **mc_basic,
+        **XGB,
     },
     ("mc", "stand", False) : {
         **common,
@@ -109,6 +123,11 @@ agent_configs = {
         **common,
         **frac_basic,
         **RF,
+    },
+    ("frac", "xg_boost", False) : {
+        **common,
+        **frac_basic,
+        **XGB,
     },
     ("frac", "stand", False) : {
         **common,

@@ -112,6 +112,7 @@ def _eval_totals(state_stats):
     comission_rate /= len(state_stats)
     omission_score /= len(state_stats)
     comission_score /=  len(state_stats)
+    print("N LINES:", len(state_stats))
     return {"step_score" : step_score, "completeness" : completeness, "correctness" : correctness,
             "omission_rate" : omission_rate, "comission_rate" : comission_rate,
             "omission_score" : omission_score, "comission_score" : comission_score,
@@ -222,14 +223,14 @@ def eval_total_cert_stats(skill_app_map, holdout_certs, cert_threshs=[.9,1.0]):
             k = i-1
 
             # -- Error Re-occurance ---
-            FP_reoccs = ~TPs[prev_TPs]
-            FN_reoccs = ~TNs[prev_TNs]
-            n_FP_reoccs, n_pTPs = np.count_nonzero(FP_reoccs), len(prev_TPs)
-            n_FN_reoccs, n_pTNs = np.count_nonzero(FN_reoccs), len(prev_TNs)
+            FP_reoccs = ~TNs[prev_TNs] # Neg that were ok then pos
+            FN_reoccs = ~TPs[prev_TPs] # Pos that were ok then neg
+            n_FP_reoccs, n_pTNs = np.count_nonzero(FP_reoccs), len(prev_TNs)
+            n_FN_reoccs, n_pTPs = np.count_nonzero(FN_reoccs), len(prev_TPs)
             n_reoccs, n_pTs = n_FP_reoccs + n_FN_reoccs, n_pTPs + n_pTNs
 
-            FP_reocc[k] = (n_FP_reoccs / n_pTPs) if n_pTPs > 0 else 0.0
-            FN_reocc[k] = (n_FN_reoccs / n_pTNs) if n_pTNs > 0 else 0.0
+            FP_reocc[k] = (n_FP_reoccs / n_pTNs) if n_pTNs > 0 else 0.0
+            FN_reocc[k] = (n_FN_reoccs / n_pTPs) if n_pTPs > 0 else 0.0
             error_reocc[k] = (n_reoccs / n_pTs) if n_pTs > 0 else 0.0
 
             total_FP_reocc += n_FP_reoccs
@@ -277,8 +278,8 @@ def eval_total_cert_stats(skill_app_map, holdout_certs, cert_threshs=[.9,1.0]):
         "FP_reocc" : FP_reocc,
         "FN_reocc" : FN_reocc,
         "error_reocc" : error_reocc,
-        "total_FP_reocc" : total_FP_reocc / total_pTPs if total_pTPs > 0 else 1.0,
-        "total_FN_reocc" : total_FN_reocc / total_pTNs if total_pTPs > 0 else 1.0,
+        "total_FP_reocc" : total_FP_reocc / total_pTNs if total_pTPs > 0 else 1.0,
+        "total_FN_reocc" : total_FN_reocc / total_pTPs if total_pTPs > 0 else 1.0,
         "total_error_reocc" : total_error_reocc / total_pTs if total_pTs > 0 else 1.0,
 
         "prod_monot" : prod_monot,
