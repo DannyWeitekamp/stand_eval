@@ -1,4 +1,4 @@
-import os
+import os, sys
 import pickle
 import numpy as np
 from eval_funcs import eval_holdout_stats, eval_total_cert_stats, avg_stats
@@ -155,6 +155,19 @@ def run_training(agent, domain, n=100, eval_kwargs={}):
 
     return skill_app_map, stats
 
+
+def load_rep(domain, when, use_proc, active=False, n_prob=100, rep=0):
+    ps = '-proc' if use_proc else ''
+    _as = '-active' if active else ''
+    dir_name = f"saves/{domain}-{when}{ps}{_as}-{n_prob}-reps/" 
+    file_name = dir_name + f"{rep}.pickle"
+    if(os.path.exists(file_name)):
+        with open(file_name, 'rb') as f:
+            tup = pickle.load(f)
+        return tup
+    return None
+
+
 def train_or_load_rep(domain, when, use_proc, active=False, n_prob=100, rep=0,
                         force_run=False):
     ps = '-proc' if use_proc else ''
@@ -186,13 +199,13 @@ def train_or_load_rep(domain, when, use_proc, active=False, n_prob=100, rep=0,
 
 
 from multiprocessing import Process, Queue
-def train_reps(domain, when, use_proc, active=False, n_prob=100, reps=20,
+def train_reps(domain, when, use_proc, active=False, n_prob=100, reps=40, start=0,
                 force_run=False):
     from agent_configs import make_agent
     stat_lst = []
     wp_stat_lst = []
     cert_stat_lst = []
-    for i in range(reps):
+    for i in range(start, reps):
 
         # Run train_or_load_rep in seperate process 
         def run(queue, *args):
@@ -217,14 +230,14 @@ def train_reps(domain, when, use_proc, active=False, n_prob=100, reps=20,
     return stat_lst, wp_stat_lst, cert_stat_lst
 
 def train_or_load_condition(domain, when, use_proc, active=False,
-                            reps=100, n_prob=100, force_run=False):
+                            reps=40, start=0, n_prob=100, force_run=False):
     ps = '-proc' if use_proc else ''
     _as = '-active' if active else ''
     file_name = f"saves/{domain}-{when}{ps}{_as}-{n_prob}x{reps}.pickle"
     
     if(not os.path.exists(file_name) or force_run):
         stat_lst, wp_stat_lst, cert_stat_lst = train_reps(
-            domain, when, use_proc, active, reps=reps, n_prob=n_prob
+            domain, when, use_proc, active, reps=reps, n_prob=n_prob, start=start
         )
         stats = avg_stats(stat_lst)
         wp_stats = avg_stats(wp_stat_lst)
@@ -245,7 +258,7 @@ def train_or_load_condition(domain, when, use_proc, active=False,
 
 if __name__ == "__main__":
         
-    if(True):
+    if(False):
         # For timing
         results = []
         def run_it(domain, when, use_proc, n_prob=100):
@@ -258,10 +271,39 @@ if __name__ == "__main__":
             results.append(f"{when}: {str(predict_elapse_logger)}")
             # print("Predict:\n", predict_elapse_logger)
 
-        # run_it("mc", "decision_tree", False, n_prob=100)
+        run_it("mc", "decision_tree", False, n_prob=100)
         run_it("mc", "stand", False, n_prob=100)
         run_it("mc", "random_forest", False, n_prob=10)
         run_it("mc", "xg_boost", False, n_prob=20)
+
+
+
+    active = "a" in sys.argv
+
+    domain = "mc"
+    if("m" in sys.argv):
+        domain = "mc"
+    elif("f" in sys.argv):
+        domain = "frac"
+
+    model = "stand"
+    if("s" in sys.argv):
+        model = "stand"
+    elif("r" in sys.argv):
+        model = "random_forest"
+    elif("x" in sys.argv):
+        model = "xg_boost"
+    elif("d" in sys.argv):
+        model = "decision_tree"
+
+    start = 0
+    if("s20" in sys.argv):
+        start = 20
+    elif("s30" in sys.argv):
+        start = 30
+
+    train_or_load_condition(domain, model, False, active=active, n_prob=100, reps=40, start=start)
+    
 
     # for res in results:
     #     print(res)
@@ -284,22 +326,31 @@ if __name__ == "__main__":
     # train_or_load_condition("mc", "stand", True, n_prob=100, reps=20)
     #train_or_load_condition("mc", "random_forest", False, n_prob=100, reps=3)
     
-    train_or_load_condition("mc", "decision_tree", False, n_prob=100, reps=40)
-    train_or_load_condition("mc", "stand", False, n_prob=100, reps=40)
-    train_or_load_condition("mc", "random_forest", False, n_prob=100, reps=20)
-    train_or_load_condition("mc", "xg_boost", False, n_prob=100, reps=20)
+    #train_or_load_condition("mc", "decision_tree", False, n_prob=100, reps=20)
+    
+
+    # if("blehh" in sys.argv):
+    #     train_or_load_condition("mc", "decision_tree", False, active=False, n_prob=100, reps=20)
+    # elif("active" in sys.argv):
+    #     train_or_load_condition("mc", "stand", False, active=True, n_prob=100, reps=20)
+    #     train_or_load_condition("mc", "random_forest", False, active=True, n_prob=100, reps=20)
+    #     train_or_load_condition("mc", "xg_boost", False, active=True, n_prob=100, reps=20)
+    # else:
+    #     train_or_load_condition("mc", "stand", False, active=False, n_prob=100, reps=20)
+    #     train_or_load_condition("mc", "random_forest", False, active=False, n_prob=100, reps=20)
+    #     train_or_load_condition("mc", "xg_boost", False, active=False, n_prob=100, reps=20)
 
 
-    train_or_load_condition("frac", "decision_tree", False, n_prob=100, reps=10)
-    train_or_load_condition("frac", "stand", False, n_prob=100, reps=10)
-    train_or_load_condition("frac", "random_forest", False, n_prob=100, reps=6)
+    #train_or_load_condition("frac", "decision_tree", False, n_prob=100, reps=10)
+    #train_or_load_condition("frac", "stand", False, n_prob=100, reps=10)
+    #train_or_load_condition("frac", "random_forest", False, n_prob=100, reps=6)
 
 
-    train_or_load_condition("frac", "decision_tree", False, n_prob=100, reps=40)
-    train_or_load_condition("frac", "stand", False, n_prob=100, reps=40)
+    #train_or_load_condition("frac", "decision_tree", False, n_prob=100, reps=40)
+    #train_or_load_condition("frac", "stand", False, n_prob=100, reps=40)
     #train_or_load_condition("frac", "stand", True, n_prob=100, reps=20)
-    train_or_load_condition("frac", "random_forest", False, n_prob=100, reps=20)
-    train_or_load_condition("frac", "xg_boost", False, n_prob=100, reps=20)
+    #train_or_load_condition("frac", "random_forest", False, n_prob=100, reps=20)
+    #train_or_load_condition("frac", "xg_boost", False, n_prob=100, reps=20)
 
     
     
