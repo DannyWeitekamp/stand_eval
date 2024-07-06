@@ -29,6 +29,11 @@ frac_basic = {
     "feature_set": ['Equals'],
     "one_skill_per_match" : True,
     "extra_features" : ["Match"],
+     "when_args": {
+        "encode_relative" : False,
+        "check_sanity" : False,
+        "one_hot" : True
+    },
 }
 
 # frac_basic = {
@@ -134,7 +139,7 @@ agent_configs = {
         **frac_basic,
         **STAND,  
     },
-    ("frac", "stand", False) : {
+    ("frac", "stand-relaxed", False) : {
         **common,
         **frac_basic,
         **STAND_Relaxed,  

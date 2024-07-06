@@ -80,7 +80,7 @@ def resample_problem_pool(env, problem_pool=[], inds=None, pool_size=100):
     print("LEN", len(problem_pool))
     return problem_pool
 
-def run_active_training(agent, domain, n=100, resample_prop=.5, eval_kwargs={}):
+def run_active_training(agent, domain, n=100, resample_prop=.5, eval_kwargs={}, start_probs=[]):
 
     env = make_env(domain)
     profile = f"gt-{domain}.txt"
@@ -91,20 +91,29 @@ def run_active_training(agent, domain, n=100, resample_prop=.5, eval_kwargs={}):
 
     c_log, skill_app_map, eval_callback = (
         gen_eval_callback(agent, profile, eval_kwargs)
-    ) 
+    )
+
+
+    if(len(start_probs) > 0):
+        trainer = AuthorTrainer(agent, env, 
+            problem_set=start_probs)
+
+        trainer.on_problem_end = eval_callback 
+        trainer.start()
+
     
     problem_pool = resample_problem_pool(env, pool_size=100)
     p = problem_pool[0]
     
     
-    for i in range(n):
+    for i in range(len(start_probs), n):
         # Train one problem 'p'
         trainer = AuthorTrainer(agent, env, problem_set=[p])#, n_problems=n)
         trainer.on_problem_end = eval_callback
         trainer.start() 
 
         print("+" * 100)
-        print(f"Finished problem {i} of {n}")
+        print(f"Finished problem {i+1} of {n}")
         
         # Eval average rollout certainty for each problem in pool 
         certainties = []
@@ -178,7 +187,18 @@ def train_or_load_rep(domain, when, use_proc, active=False, n_prob=100, rep=0,
         agent = make_agent(domain, when, use_proc)
 
         if(active):
-            skill_app_map, stats = run_active_training(agent, domain, n=n_prob)
+            # An exception for Fractions, always start with one problem 
+            #  of each type
+            start_probs = []
+            if(domain == "frac"):
+                env = make_env(domain)
+                start_probs = [
+                    env.set_random_problem("AD"),
+                    env.set_random_problem("AS"),
+                    env.set_random_problem("M"),
+                ]
+
+            skill_app_map, stats = run_active_training(agent, domain, n=n_prob, start_probs=start_probs)
         else:
             skill_app_map, stats = run_training(agent, domain, n=n_prob)
 
@@ -297,7 +317,9 @@ if __name__ == "__main__":
         model = "decision_tree"
 
     start = 0
-    if("s20" in sys.argv):
+    if("s10" in sys.argv):
+        start = 10
+    elif("s20" in sys.argv):
         start = 20
     elif("s30" in sys.argv):
         start = 30
