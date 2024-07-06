@@ -31,10 +31,10 @@ frac_basic = {
     "extra_features" : ["Match"],
 }
 
-frac_basic = {
-    "function_set": ['Multiply', 'Add'],
-    "feature_set": ['Equals'],
-}
+# frac_basic = {
+#     "function_set": ['Multiply', 'Add'],
+#     "feature_set": ['Equals'],
+# }
 
 proc_lrn = {
     "process_learner": "htnlearner",
