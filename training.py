@@ -196,6 +196,9 @@ def train_or_load_rep(domain, when, use_proc, active=False, n_prob=100, rep=0,
                     env.set_random_problem("AD"),
                     env.set_random_problem("AS"),
                     env.set_random_problem("M"),
+                    env.set_random_problem("AD"),
+                    env.set_random_problem("AS"),
+                    env.set_random_problem("M"),
                 ]
 
             skill_app_map, stats = run_active_training(agent, domain, n=n_prob, start_probs=start_probs)
