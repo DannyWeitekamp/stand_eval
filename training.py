@@ -142,15 +142,14 @@ def run_active_training(agent, domain, n=100, resample_prop=.5, eval_kwargs={}, 
 
     return skill_app_map, stats
 
-def run_training(agent, domain, n=100, eval_kwargs={}):
+def run_training(agent, domain, n=100, eval_kwargs={}, start_probs=[]):
     env = make_env(domain)
     profile = f"gt-{domain}.txt"
     if(not os.path.exists(profile)):
         make_completeness_profile(env, 100, profile)
 
-    problems = []
     trainer = AuthorTrainer(agent, env, 
-        problem_set=problems, n_problems=n)
+        problem_set=start_probs, n_problems=n)
 
     c_log, skill_app_map, eval_callback = (
         gen_eval_callback(agent, profile, eval_kwargs)
@@ -186,10 +185,10 @@ def train_or_load_rep(domain, when, use_proc, active=False, n_prob=100, rep=0,
     if(not os.path.exists(file_name) or force_run):
         agent = make_agent(domain, when, use_proc)
 
+        start_probs = []
         if(active):
             # An exception for Fractions, always start with one problem 
             #  of each type
-            start_probs = []
             if(domain == "frac"):
                 env = make_env(domain)
                 start_probs = [
@@ -203,7 +202,19 @@ def train_or_load_rep(domain, when, use_proc, active=False, n_prob=100, rep=0,
 
             skill_app_map, stats = run_active_training(agent, domain, n=n_prob, start_probs=start_probs)
         else:
-            skill_app_map, stats = run_training(agent, domain, n=n_prob)
+            # An exception for MC when using process-learning, use curated set
+            if(domain == "mc" and use_proc):
+                start_probs = [
+                        ["574", "798"],
+                        ["248", "315"],
+                        ["872", "371"],
+                        ["394", "452"],
+                        ["252", "533"],
+                        ["334", "943"],
+                        ["189", "542"],
+                ]
+
+            skill_app_map, stats = run_training(agent, domain, n=n_prob, start_probs=start_probs)
 
         wp_stats = eval_total_cert_stats(skill_app_map, stats['when_preds'])
         cert_stats = eval_total_cert_stats(skill_app_map, stats['certainties'])
@@ -262,6 +273,11 @@ def train_or_load_condition(domain, when, use_proc, active=False,
         stat_lst, wp_stat_lst, cert_stat_lst = train_reps(
             domain, when, use_proc, active, reps=reps, n_prob=n_prob, start=start
         )
+
+        # Don't average stats for fill-in runs that don't cover all reps
+        if(start != 0):
+            return
+
         stats = avg_stats(stat_lst)
         wp_stats = avg_stats(wp_stat_lst)
         cert_stats = avg_stats(cert_stat_lst)
@@ -319,6 +335,10 @@ if __name__ == "__main__":
     elif("d" in sys.argv):
         model = "decision_tree"
 
+    use_proc = False
+    if("p" in sys.argv):
+        use_proc = True
+
     start = 0
     if("s10" in sys.argv):
         start = 10
@@ -327,7 +347,7 @@ if __name__ == "__main__":
     elif("s30" in sys.argv):
         start = 30
 
-    train_or_load_condition(domain, model, False, active=active, n_prob=100, reps=40, start=start)
+    train_or_load_condition(domain, model, use_proc, active=active, n_prob=100, reps=40, start=start)
     
 
     # for res in results:

@@ -29,6 +29,9 @@ frac_basic = {
     "feature_set": ['Equals'],
     "one_skill_per_match" : True,
     "extra_features" : ["Match"],
+
+    # Not sure why but in version ran with first participants
+    #  in Feb. used encode_relative=False
      "when_args": {
         "encode_relative" : False,
         "check_sanity" : False,
@@ -45,7 +48,7 @@ proc_lrn = {
     "process_learner": "htnlearner",
     "track_rollout_preseqs" : True,
     "action_filter_args" : {"thresholds": [.3, 0, -.5, -.75]},
-    "implicit_reward_kinds" : ["unordered_groups"]
+    "implicit_reward_kinds" : ["unordered_groups"],
 }
 
 DT = {
@@ -115,7 +118,13 @@ agent_configs = {
         **mc_basic,
         **mc_proc_lrn,
         **STAND,  
-        **proc_lrn
+        **proc_lrn,
+
+        # Turn off unordered groups... causing BAD ACTION error
+        "implicit_reward_kinds" : None,
+        # Slim down features
+        "extra_features" : ["RemoveAll", "SkillCandidates","Match"],
+
     },
 
     # Frac
