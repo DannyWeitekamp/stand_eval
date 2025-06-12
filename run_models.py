@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.random import poisson
 from sklearn.model_selection import train_test_split
 from gen_synth_conds import gen_synthetic_dnf_data, print_dnf
 from sklearn.preprocessing import OneHotEncoder
@@ -9,10 +10,26 @@ from stand.stand import STANDClassifier
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
+import pickle
+from datetime import datetime
+import os
+from random import random as py_random
+
+import time
+class PrintElapse():
+    def __init__(self, name):
+        self.name = name
+    def __enter__(self):
+        self.t0 = time.time_ns()/float(1e6)
+    def __exit__(self,*args):
+        self.t1 = time.time_ns()/float(1e6)
+        print(f'{self.name}: {self.t1-self.t0:.6f} ms')
+
+DEFAULT_CERT_BINS = [(.90, .92), (.92, .94), (.94, .96), (.96, .98), (.98, 1.0), (1.0, 1.0)]
 
 # -----------------------------------------------------------
 # Certainty Stats for Thrashing, TPR etc. 
-def eval_total_cert_stats(corrs, holdout_certs, cert_threshs=[.9,1.0]):
+def eval_total_cert_stats(corrs, holdout_certs, cert_bins=DEFAULT_CERT_BINS, diff_thresh=0.01):
     # corrs = np.array([rew > 0 for ind, rew in skill_app_map.values()], dtype=np.bool_)
     incorrs = ~corrs
     L = len(holdout_certs)
@@ -28,16 +45,17 @@ def eval_total_cert_stats(corrs, holdout_certs, cert_threshs=[.9,1.0]):
     # Productive Monotonicity: Proportion of certainty changes
     #  that correctly move toward 1.0 if correct or -1.0 if incorrect. 
     prod_monot  = np.zeros(L-1, dtype=np.float64)
-    total_prod_d, total_d  = 0, 0
+    w_prod_monot  = np.zeros(L-1, dtype=np.float64)
+    total_prod_d, total_w_prod_d, total_d, total_abs_d_cert  = 0, 0.0, 0, 0.0
     
     # Certainty Preds @ thresh 
-    precisions_at_thresh  = [np.zeros(L, dtype=np.float64) for _ in range(len(cert_threshs))]
-    total_TP_at_thresh = [0] * len(cert_threshs)
-    total_PP_at_thresh = [0] * len(cert_threshs)
+    precisions_in_bin  = [np.zeros(L, dtype=np.float64) for _ in range(len(cert_bins))]
+    total_TP_at_thresh = [0] * len(cert_bins)
+    total_PP_at_thresh = [0] * len(cert_bins)
 
     for i, certs in enumerate(holdout_certs):
         # Fill in missing certs with 0 predictions
-        certs = np.pad(certs, (0, len(corrs)-len(certs)), constant_values=(0, 0))
+        # certs = np.pad(certs, (0, len(corrs)-len(certs)), constant_values=(0, 0))
         TPs = certs[corrs] > 0.0
         TNs = certs[incorrs] < 0.0
 
@@ -65,38 +83,56 @@ def eval_total_cert_stats(corrs, holdout_certs, cert_threshs=[.9,1.0]):
 
             # --- Productive Monotonicity ---             
             d_certs = certs-prev_certs
-            print(certs)
+
+            # print("::", certs.shape, prev_certs.shape)
+
+            # print(certs)
             prod_pos = (d_certs > 0) & corrs
             prod_neg = (d_certs < 0) & incorrs
-            prods = (prod_pos | prod_neg)[d_certs != 0]
-            n_prod_d, n_d = np.count_nonzero(prods), len(prods)
+            prod_mask = (prod_pos | prod_neg)
+            prods = prod_mask[np.abs(d_certs) > diff_thresh]
+            n_prod_d, n_d = np.count_nonzero(prods), len(prods)            
+            prod_monot[k] = (n_prod_d / n_d) if n_d > 0 else np.nan
 
-            prod_monot[k] = (n_prod_d / n_d) if n_d > 0 else 1.0
+
+            abs_d_certs = np.abs(d_certs)
+            sum_abs_d_certs = np.sum(abs_d_certs)
+            w_prod_d = (np.sum(prod_mask*abs_d_certs) - np.sum((~prod_mask)*abs_d_certs))
+            w_prod_monot[k] = w_prod_d / sum_abs_d_certs if sum_abs_d_certs != 0.0 else np.nan
+            total_w_prod_d += w_prod_d #/// len(d_certs)
+            total_abs_d_cert += sum_abs_d_certs
+            # print("::", w_prod_d, sum_abs_d_certs)
+
+
+            # print(prod_monot[k], np.mean(np.abs((prod_pos | prod_neg)*d_certs))-np.mean(np.abs((~(prod_pos | prod_neg))*d_certs)), n_d)
             total_prod_d += n_prod_d
             total_d += n_d
 
         # Update Precision
-        for t, thresh in enumerate(cert_threshs):
-            pred = certs >= thresh;
+        for t, c_bin in enumerate(cert_bins):
+            c_min, c_max = c_bin
+            pred = (certs >= c_min) & (certs < c_max);
 
             # True positives over predicted positives
             TP = np.count_nonzero(pred & corrs)
             PP = np.count_nonzero(pred)
             total_TP_at_thresh[t] += TP
             total_PP_at_thresh[t] += PP
-            precisions_at_thresh[t][i] = (TP / PP) if PP > 0 else 1.0
+            precisions_in_bin[t][i] = (TP / PP) if PP > 0 else 1.0
 
         prev_certs = certs
         prev_TPs = TPs
         prev_TNs = TNs
 
     out = {}
-    for t, thresh in enumerate(cert_threshs):
+    for t, c_bin in enumerate(cert_bins):
         total_TP = total_TP_at_thresh[t]
         total_PP = total_PP_at_thresh[t]
 
-        out[("total_precision", thresh)] = (total_TP / total_PP) if total_PP > 0 else 1.0
-        out[("precision", thresh)] = precisions_at_thresh[t]
+        out[("total_precision", c_bin)] = (total_TP / total_PP) if total_PP > 0 else 1.0
+        out[("precision", c_bin)] = precisions_in_bin[t]
+        out[("bin_n", c_bin)] = total_PP
+        out[("TP_n", c_bin)] = total_TP
 
     out.update({
         "FP_reocc" : FP_reocc,
@@ -105,43 +141,24 @@ def eval_total_cert_stats(corrs, holdout_certs, cert_threshs=[.9,1.0]):
         "total_FP_reocc" : total_FP_reocc / total_pTNs if total_pTPs > 0 else 1.0,
         "total_FN_reocc" : total_FN_reocc / total_pTPs if total_pTPs > 0 else 1.0,
         "total_error_reocc" : total_error_reocc / total_pTs if total_pTs > 0 else 1.0,
-
         "prod_monot" : prod_monot,
+        "w_prod_monot" : w_prod_monot,
         "total_prod_monot" : (total_prod_d / total_d) if total_d > 0 else 1.0,
+        "total_w_prod_monot" : (total_w_prod_d / total_abs_d_cert) if total_d > 0 else 1.0,
     })
 
     return out
 
 
-one_hot_encoder = OneHotEncoder()
 
-
-X, y, dnf = gen_synthetic_dnf_data(
-                          n_samples=2000,
-                          n_feats=1000,
-                          vals_per_feat=3,
-                          conj_len=4, 
-                          num_conj=3,
-                          conj_probs=.15,
-                          dupl_lit_prob=0.2,
-                          force_same_vals=False)
-
-one_hot_encoder.fit(X)
-# X_one_hot = one_hot_encoder.transform(X).toarray()
-
-# print("X")
-# print(X)
-
-
-
-data = train_test_split(X, y, train_size=100)
 
 def rf_cert_fn(classifier, X_nom_subset):
     # print("RF")
     probs = classifier.predict_proba(X_nom_subset)
     labels = classifier.classes_
     best_ind = np.argmax(probs, axis=1)
-    p = probs[:, best_ind]
+    p = probs[np.arange(len(probs)), best_ind]
+
     return np.where(best_ind == 0, -p, p)
 
 def xg_cert_fn(classifier, X_nom_subset):
@@ -150,7 +167,7 @@ def xg_cert_fn(classifier, X_nom_subset):
     labels = classifier.classes_
     # labels  = self.le.inverse_transform(labels)
     best_ind = np.argmax(probs, axis=1)
-    p = probs[:, best_ind]
+    p = probs[np.arange(len(probs)), best_ind]
     return np.where(best_ind == 0, -p, p)
 
 def stand_cert_fn(classifier, X_nom_subset):
@@ -160,21 +177,36 @@ def stand_cert_fn(classifier, X_nom_subset):
     # print(probs.shape, labels)
     # probs = probs[0]
     best_ind = np.argmax(probs, axis=1)
-    # print(best_ind)
-    p = probs[:, best_ind]
+    # print(best_ind[:20])
+
+    # p = np.take(probs, best_ind, axis=1)
+    p = probs[np.arange(len(probs)), best_ind]
+    # p = np.take_along_axis(probs, best_ind, axis=1)
+
+
+    # print(probs.shape, p.shape, best_ind.shape)
     return np.where(best_ind == 0, -p, p)
     # return labels[best_ind] * probs[:, best_ind]
 
+lam = 2.0
+s_kwargs = {
+    "split_choice" : "dyn_all_near_max"
+}
 
 models = {
-    "stand" : {"model": STANDClassifier(), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "xgboost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
-    # "rand_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
+    "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_l=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_l_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, lam_l=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
+    # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : None },
 }
 
 
-def test_model(name, config, data, is_stand=False):
+def test_model(name, config, data, one_hot_encoder, 
+                incr=False, is_stand=False, calc_certs=False):
     X_train, X_test, y_train, y_test = data
 
     model = config['model']
@@ -190,25 +222,33 @@ def test_model(name, config, data, is_stand=False):
         X_train = one_hot_encoder.transform(X_train).toarray()
         X_test = one_hot_encoder.transform(X_test).toarray()
     
-    for i in range(1,len(X_train)+1):
+    if(not isinstance(incr, bool)):
+        rng = range(1,len(X_train)+1,incr)
+    else:
+        rng = range(1,len(X_train)+1) if(incr) else [len(X_train)]
+
+    for i in rng:
         # Fit on subset of training set 
         X_train_slc = X_train[0:i]
         y_train_slc = y_train[0:i]
-        if(is_stand):
-            model.fit(X_train_slc.astype(dtype=np.int32), None, y_train_slc)
-            # print(model)
-        else:
-            model.fit(X_train_slc, y_train_slc)
 
-        # Test on the test_set
-        if(is_stand):
-            y_preds = model.predict(X_test, None)
-        else:
-            y_preds = model.predict(X_test)
+        with PrintElapse(f"fit {name}"):
+            if(is_stand):
+                model.fit(X_train_slc.astype(dtype=np.int32), None, y_train_slc)
+                # print(model)
+            else:
+                model.fit(X_train_slc, y_train_slc)
+
+        with PrintElapse(f"preict {name}"):
+            # Test on the test_set
+            if(is_stand):
+                y_preds = model.predict(X_test, None)
+            else:
+                y_preds = model.predict(X_test)
 
         corrs = y_preds == y_test
 
-        if(cert_fn):
+        if(cert_fn and calc_certs):
             y_certs = cert_fn(model, X_test)
 
             # print("y_certs", y_certs)
@@ -227,23 +267,45 @@ def test_model(name, config, data, is_stand=False):
 
     # print(stats)
 
-    if(is_stand):
-        print(model)
+    # if(name == "stand_p"):
+    #     print(model)
+    print()
     print(name)
-    print("Accuracies: ", holdout_accuracies)
+
+    stats = {"model_name" : name,
+             "accuracies" :  holdout_accuracies,
+             "accuracy" : holdout_accuracies[-1],
+            }
+    # print("Accuracies: ", holdout_accuracies)
     print("Accuracy: ", holdout_accuracies[-1])
-    if(cert_fn is not None):
-        stats = eval_total_cert_stats(y_test==1.0, holdout_certs)
-        print("total_FP_reocc:", stats["total_FP_reocc"])
-        print("total_FN_reocc:", stats["total_FN_reocc"])
-        print("total_error_reocc:", stats["total_error_reocc"])
-        print("prod_monot:", stats["prod_monot"])
+    
+    if(cert_fn and calc_certs):
+
+        cert_stats = eval_total_cert_stats(y_test==1.0, holdout_certs)
+        stats.update(cert_stats)
+
+        #print("total_FP_reocc:", stats["total_FP_reocc"])
+        #print("total_FN_reocc:", stats["total_FN_reocc"])
+        #print("total_error_reocc:", stats["total_error_reocc"])
+        # print("prod_monot:", stats["prod_monot"])
+        #print("w_prod_monot:", stats["w_prod_monot"])
+
         print("total_prod_monot:", stats["total_prod_monot"])
+        print("total_w_prod_monot:", stats["total_w_prod_monot"])
 
-print_dnf(dnf)
+        for cert_bin in DEFAULT_CERT_BINS:
+            c_min, c_max = cert_bin
+            c_mean = (c_min + c_max) / 2
+            c_hrng = (c_max - c_min) / 2
+            prec = stats[('total_precision', cert_bin)]
+            TP_n = stats[('TP_n', cert_bin)]
+            bin_n = stats[('bin_n', cert_bin)]
+            #print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
+            # print("total_precision @ 1.0:", stats[("total_precision",1.0)])
+
+    return stats
 
 
-X_train, X_test, y_train, y_test = data
 
 
 from numba import njit
@@ -269,19 +331,95 @@ def ensure_first_neg_pos(X_train, y_train):
     y_train[[1, first_1]] = y_train[[first_1, 1]]
 
 
-ensure_first_neg_pos(X_train, y_train)
+
+def run_and_save_stats(models):
+    time = datetime.now().strftime('%m-%d-%Y_%H:%M:%S')
+
+    one_hot_encoder = OneHotEncoder()
+
+    min_one_possion = lambda x : 1+poisson(x-1)
+    min_two_possion = lambda x : 2+poisson(x-2)
+
+
+    # np.random.seed()
+    # seed = int(10000*py_random())
+    # seed = 4855
+    seed = 8931
+    np.random.seed(seed)
+
+    X, y, dnf = gen_synthetic_dnf_data(
+                            n_samples=2200,
+                            n_feats=500,
+                            vals_per_feat= lambda : min_two_possion(3),
+                            pos_prop=.5,
+
+                            # conj_len= lambda : min_one_possion(2), 
+                            # num_conj= lambda : min_one_possion(2),
+                            conj_len=3,
+                            num_conj=2,
+                            dupl_lit_prob=0.3,
+                            conj_probs=.28,
+
+                            neg_conj_len=lambda : min_two_possion(3),
+                            num_neg_conj=100,
+                            neg_dupl_lit_prob=0.1,
+                            neg_conj_probs=.8,
+
+                            force_same_vals=False)
+
+
+    print_dnf(dnf)
+    y[y!=1] = 0
+    one_hot_encoder.fit(X)
+
+    data = train_test_split(X, y, train_size=100)
+
+    X_train, X_test, y_train, y_test = data
+
+    #print("y_train", y_train)
+    print("=1 Prop", np.sum(y_train==1)/len(y_train), np.sum(y_test==1)/len(y_test))
+
+    # raise ValueError()
+
+    ensure_first_neg_pos(X_train, y_train)
+
+
+    stats_by_model = {}
+    for name, config in models.items():
+        is_stand = name == "stand"
+
+        
+        stats = test_model(name, config, data, one_hot_encoder, 
+                    incr=False, is_stand=is_stand, calc_certs=True)
+        print("SEED:", seed)
+        stats_by_model[name] = stats
+
+
+    os.makedirs("sim_saves", exist_ok=True)
+    
+    with open(f"sim_saves/run_{time}", 'wb+') as f:
+        pickle.dump(stats_by_model, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+for i in range(1):
+    print("------------------------------------")
+    run_and_save_stats(models)
+# X_one_hot = one_hot_encoder.transform(X).toarray()
+
+# print("X")
+# print(X)
 
 
 
-print("y_train", y_train)
 
-# raise ValueError()
 
-print("=1 Prop", np.sum(y_train)/len(y_train), np.sum(y_test)/len(y_test))
 
-for name, model in models.items():
-    is_stand = name == "stand"
-    test_model(name, model, data, is_stand)
+
+
+
+
+
+
+
 
 
 # print(X)
