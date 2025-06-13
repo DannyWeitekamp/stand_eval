@@ -194,9 +194,9 @@ s_kwargs = {
 }
 
 models = {
-    "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_l=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, lam_l=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
@@ -206,7 +206,7 @@ models = {
 
 
 def test_model(name, config, data, one_hot_encoder, 
-                incr=False, is_stand=False, calc_certs=False):
+                incr=True, is_stand=False, calc_certs=False):
     X_train, X_test, y_train, y_test = data
 
     model = config['model']
@@ -232,21 +232,39 @@ def test_model(name, config, data, one_hot_encoder,
         X_train_slc = X_train[0:i]
         y_train_slc = y_train[0:i]
 
-        with PrintElapse(f"fit {name}"):
-            if(is_stand):
-                model.fit(X_train_slc.astype(dtype=np.int32), None, y_train_slc)
-                # print(model)
-            else:
-                model.fit(X_train_slc, y_train_slc)
+        # with PrintElapse(f"fit {name}"):
+        if(is_stand):
+            model.fit(X_train_slc.astype(dtype=np.int32), None, y_train_slc)
+            # print(model)
+        else:
+            model.fit(X_train_slc, y_train_slc)
 
-        with PrintElapse(f"preict {name}"):
-            # Test on the test_set
-            if(is_stand):
-                y_preds = model.predict(X_test, None)
-            else:
-                y_preds = model.predict(X_test)
+        # with PrintElapse(f"preict {name}"):
+        # Test on the test_set
+        if(is_stand):
+            y_preds = model.predict(X_test, None)
+        else:
+            y_preds = model.predict(X_test)
+
+
 
         corrs = y_preds == y_test
+
+
+        #############################
+        # print("--------------------------------")
+        # fails = X_test[~corrs]
+        # print("BEFORE:", accuracy_score(y_test, y_preds))
+        # probs, labels = model.predict_prob(X_test, None)
+        # best_ind = np.argmax(probs, axis=1)
+        # new_y_preds = labels[best_ind]
+        # print("AFTER:", accuracy_score(y_test, new_y_preds))
+
+        # model.predict(X_test[:1], None)
+        # model.predict_prob(X_test[24:26], None)
+        # raise ValueError()
+        # print("--------------------------------")
+        #############################
 
         if(cert_fn and calc_certs):
             y_certs = cert_fn(model, X_test)
@@ -300,7 +318,7 @@ def test_model(name, config, data, one_hot_encoder,
             prec = stats[('total_precision', cert_bin)]
             TP_n = stats[('TP_n', cert_bin)]
             bin_n = stats[('bin_n', cert_bin)]
-            #print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
+            print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
             # print("total_precision @ 1.0:", stats[("total_precision",1.0)])
 
     return stats
@@ -342,9 +360,9 @@ def run_and_save_stats(models):
 
 
     # np.random.seed()
-    # seed = int(10000*py_random())
+    seed = int(10000*py_random())
     # seed = 4855
-    seed = 8931
+    # seed = 8931
     np.random.seed(seed)
 
     X, y, dnf = gen_synthetic_dnf_data(
@@ -390,7 +408,7 @@ def run_and_save_stats(models):
 
         
         stats = test_model(name, config, data, one_hot_encoder, 
-                    incr=False, is_stand=is_stand, calc_certs=True)
+                    incr=True, is_stand=is_stand, calc_certs=True)
         print("SEED:", seed)
         stats_by_model[name] = stats
 
@@ -400,7 +418,7 @@ def run_and_save_stats(models):
     with open(f"sim_saves/run_{time}", 'wb+') as f:
         pickle.dump(stats_by_model, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-for i in range(1):
+for i in range(100):
     print("------------------------------------")
     run_and_save_stats(models)
 # X_one_hot = one_hot_encoder.transform(X).toarray()

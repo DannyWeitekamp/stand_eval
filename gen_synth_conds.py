@@ -212,8 +212,8 @@ def gen_synthetic_dnf_data(n_samples,
                           neg_conj_probs=.2,
                           
                           force_same_vals=False,
-                          neg_violate=True,
-                          neg_near_violate=True):
+                          neg_violate=False,
+                          neg_near_violate=False):
     
     if hasattr(vals_per_feat, "__call__"):
         n_feat_bound = np.reshape([vals_per_feat()+1 for _ in range(n_feats)], (1,n_feats))
