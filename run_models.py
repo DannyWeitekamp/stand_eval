@@ -25,7 +25,9 @@ class PrintElapse():
         self.t1 = time.time_ns()/float(1e6)
         print(f'{self.name}: {self.t1-self.t0:.6f} ms')
 
-DEFAULT_CERT_BINS = [(.90, .92), (.92, .94), (.94, .96), (.96, .98), (.98, 1.0), (1.0, 1.0)]
+DEFAULT_CERT_BINS = [
+    (.50, .60), (.60, .70), (.70, .80), (.80, .90),
+    (.90, .92), (.92, .94), (.94, .96), (.96, .98), (.98, 1.0), (1.0, 1.0)]
 
 # -----------------------------------------------------------
 # Certainty Stats for Thrashing, TPR etc. 
@@ -188,20 +190,29 @@ def stand_cert_fn(classifier, X_nom_subset):
     return np.where(best_ind == 0, -p, p)
     # return labels[best_ind] * probs[:, best_ind]
 
-lam = 2.0
+lam = 1.0
 s_kwargs = {
     "split_choice" : "dyn_all_near_max"
 }
 
 models = {
     # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_l=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, lam_l=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : None },
+    # "stand_dyn" : {"model": STANDClassifier(split_choice="dyn_all_near_max", lam_p=lam, lam_e=lam, pred_kind="max_leaves"),
+    #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    
+    # "stand_leafs" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="max_leaves"),
+    #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_density" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="density"),
+         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_prob" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="prob"),
+         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 }
 
 
@@ -262,6 +273,9 @@ def test_model(name, config, data, one_hot_encoder,
 
         # model.predict(X_test[:1], None)
         # model.predict_prob(X_test[24:26], None)
+
+        # print("--------------------------------")
+        # model.predict_prob(fails, None)
         # raise ValueError()
         # print("--------------------------------")
         #############################
@@ -295,7 +309,8 @@ def test_model(name, config, data, one_hot_encoder,
              "accuracy" : holdout_accuracies[-1],
             }
     # print("Accuracies: ", holdout_accuracies)
-    print("Accuracy: ", holdout_accuracies[-1])
+    print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
+    print("Accuracy   : ", holdout_accuracies[-1])
     
     if(cert_fn and calc_certs):
 
@@ -318,7 +333,8 @@ def test_model(name, config, data, one_hot_encoder,
             prec = stats[('total_precision', cert_bin)]
             TP_n = stats[('TP_n', cert_bin)]
             bin_n = stats[('bin_n', cert_bin)]
-            print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
+            # print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
+            print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
             # print("total_precision @ 1.0:", stats[("total_precision",1.0)])
 
     return stats
@@ -361,6 +377,7 @@ def run_and_save_stats(models):
 
     # np.random.seed()
     seed = int(10000*py_random())
+    # seed = 5545
     # seed = 4855
     # seed = 8931
     np.random.seed(seed)
@@ -374,7 +391,7 @@ def run_and_save_stats(models):
                             # conj_len= lambda : min_one_possion(2), 
                             # num_conj= lambda : min_one_possion(2),
                             conj_len=3,
-                            num_conj=2,
+                            num_conj=1,
                             dupl_lit_prob=0.3,
                             conj_probs=.28,
 
@@ -408,7 +425,7 @@ def run_and_save_stats(models):
 
         
         stats = test_model(name, config, data, one_hot_encoder, 
-                    incr=True, is_stand=is_stand, calc_certs=True)
+                    incr=5, is_stand=is_stand, calc_certs=True)
         print("SEED:", seed)
         stats_by_model[name] = stats
 

@@ -88,7 +88,7 @@ def random_uniform_data(n_samples, n_feats, n_feat_bound=6):
     data = np.random.randint(1, n_feat_bound, size=(n_samples, n_feats))
     return data
 
-def ensure_violates(x, conj, n_feat_bound, prob=.1, near_violate=False):
+def ensure_violates(x, conj, n_feat_bound, prob=.25, near_violate=False):
     if(near_violate):
         x[conj['ind']] = conj['val']
         # print("MID:", x[conj['ind']], conj['val'])
