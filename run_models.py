@@ -192,15 +192,16 @@ def stand_cert_fn(classifier, X_nom_subset):
 
 lam = 1.0
 s_kwargs = {
-    "split_choice" : "dyn_all_near_max"
+    "split_choice" : "dyn_all_near_max",
+    "pred_kind" : "prob"
 }
 
 models = {
     # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_l=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p_l_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, lam_l=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_l=30.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, lam_l=30), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : None },
@@ -209,10 +210,10 @@ models = {
     
     # "stand_leafs" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="max_leaves"),
     #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_density" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="density"),
-         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_prob" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="prob"),
-         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_density" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="density"),
+    #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_prob" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="prob"),
+    #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 }
 
 
@@ -334,7 +335,7 @@ def test_model(name, config, data, one_hot_encoder,
             TP_n = stats[('TP_n', cert_bin)]
             bin_n = stats[('bin_n', cert_bin)]
             # print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
-            print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
+            # print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
             # print("total_precision @ 1.0:", stats[("total_precision",1.0)])
 
     return stats
@@ -353,7 +354,7 @@ def index_of(array, item):
 
 def ensure_first_neg_pos(X_train, y_train):
     first_0 = index_of(y_train, 0)
-    print("first_0", first_0)
+    # print("first_0", first_0)
     X_train[[0, first_0]] = X_train[[first_0, 0]]
     y_train[[0, first_0]] = y_train[[first_0, 0]]
 
@@ -376,11 +377,7 @@ def run_and_save_stats(models):
 
 
     # np.random.seed()
-    seed = int(10000*py_random())
-    # seed = 5545
-    # seed = 4855
-    # seed = 8931
-    np.random.seed(seed)
+    
 
     X, y, dnf = gen_synthetic_dnf_data(
                             n_samples=2200,
@@ -391,7 +388,7 @@ def run_and_save_stats(models):
                             # conj_len= lambda : min_one_possion(2), 
                             # num_conj= lambda : min_one_possion(2),
                             conj_len=3,
-                            num_conj=1,
+                            num_conj=2,
                             dupl_lit_prob=0.3,
                             conj_probs=.28,
 
@@ -403,7 +400,7 @@ def run_and_save_stats(models):
                             force_same_vals=False)
 
 
-    print_dnf(dnf)
+    # print_dnf(dnf)
     y[y!=1] = 0
     one_hot_encoder.fit(X)
 
@@ -412,21 +409,21 @@ def run_and_save_stats(models):
     X_train, X_test, y_train, y_test = data
 
     #print("y_train", y_train)
-    print("=1 Prop", np.sum(y_train==1)/len(y_train), np.sum(y_test==1)/len(y_test))
+    # print("=1 Prop", np.sum(y_train==1)/len(y_train), np.sum(y_test==1)/len(y_test))
 
     # raise ValueError()
 
     ensure_first_neg_pos(X_train, y_train)
 
 
+
     stats_by_model = {}
-    for name, config in models.items():
+    for i, (name, config) in enumerate(models.items()):
         is_stand = name == "stand"
 
-        
         stats = test_model(name, config, data, one_hot_encoder, 
                     incr=5, is_stand=is_stand, calc_certs=True)
-        print("SEED:", seed)
+        # print("SEED:", seed)
         stats_by_model[name] = stats
 
 
@@ -435,7 +432,20 @@ def run_and_save_stats(models):
     with open(f"sim_saves/run_{time}", 'wb+') as f:
         pickle.dump(stats_by_model, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-for i in range(100):
+
+# seed = int(10000*py_random())
+    # seed = 5545
+# # seed = 4855
+# seed = 8931
+# np.random.seed(seed)
+# seeds = np.arange(100)
+for i in range(10):
+
+    # seed = int(10000*py_random())
+    # seed = 5545
+    # seed = 4855
+    # seed = 8931
+    np.random.seed(i)
     print("------------------------------------")
     run_and_save_stats(models)
 # X_one_hot = one_hot_encoder.transform(X).toarray()
