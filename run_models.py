@@ -25,13 +25,39 @@ class PrintElapse():
         self.t1 = time.time_ns()/float(1e6)
         print(f'{self.name}: {self.t1-self.t0:.6f} ms')
 
+def biased_train_test_split(X, y, train_size=100, 
+                true_prop=.5 #.8
+                ):
+    n_true = int(train_size*(true_prop))
+    # print(np.nonzero(y==1)[0])
+    true_inds = np.random.choice(np.nonzero(y==1)[0], size=n_true, replace=False)
+    # print(true_inds)
+    n_false = int(train_size-n_true)
+    false_inds = np.random.choice(np.nonzero(y!=1)[0], size=n_false, replace=False)
+    # print(false_inds)
+
+    train_inds = np.concatenate([true_inds, false_inds])
+    np.random.shuffle(train_inds)
+    # print("train_inds:", train_inds)
+    test_mask = np.ones(len(X), dtype=np.bool_)
+    test_mask[train_inds] = 0
+
+    # print(y[train_inds])
+
+    # print(X[train_inds].shape, y[train_inds].shape, X[test_mask].shape, y[test_mask].shape)
+    return X[train_inds], X[test_mask], y[train_inds], y[test_mask]
+
+
+
+
+
 DEFAULT_CERT_BINS = [
     (.50, .60), (.60, .70), (.70, .80), (.80, .90),
     (.90, .92), (.92, .94), (.94, .96), (.96, .98), (.98, 1.0), (1.0, 1.0)]
 
 # -----------------------------------------------------------
 # Certainty Stats for Thrashing, TPR etc. 
-def eval_total_cert_stats(corrs, holdout_certs, cert_bins=DEFAULT_CERT_BINS, diff_thresh=0.01):
+def eval_total_cert_stats(corrs, holdout_certs, cert_bins=DEFAULT_CERT_BINS, diff_thresh=0.05):
     # corrs = np.array([rew > 0 for ind, rew in skill_app_map.values()], dtype=np.bool_)
     incorrs = ~corrs
     L = len(holdout_certs)
@@ -190,7 +216,9 @@ def stand_cert_fn(classifier, X_nom_subset):
     return np.where(best_ind == 0, -p, p)
     # return labels[best_ind] * probs[:, best_ind]
 
-lam = 1.0
+lam_p = 1.0
+lam_e = 1.0
+lam_l = 10.0
 s_kwargs = {
     "split_choice" : "dyn_all_near_max",
     "pred_kind" : "prob"
@@ -199,9 +227,10 @@ s_kwargs = {
 models = {
     # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_l=30.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, lam_l=30), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e100_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : None },
@@ -294,12 +323,6 @@ def test_model(name, config, data, one_hot_encoder,
     # print("FN_reocc:", stats["FN_reocc"])
     # print("error_reocc:", stats["error_reocc"])
         
-
-    # "prod_monot" : prod_monot,
-    # "total_prod_monot" : (total_prod_d / total_d) if total_d > 0 else 1.0,
-
-    # print(stats)
-
     # if(name == "stand_p"):
     #     print(model)
     print()
@@ -310,7 +333,7 @@ def test_model(name, config, data, one_hot_encoder,
              "accuracy" : holdout_accuracies[-1],
             }
     # print("Accuracies: ", holdout_accuracies)
-    print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
+    # print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
     print("Accuracy   : ", holdout_accuracies[-1])
     
     if(cert_fn and calc_certs):
@@ -335,7 +358,7 @@ def test_model(name, config, data, one_hot_encoder,
             TP_n = stats[('TP_n', cert_bin)]
             bin_n = stats[('bin_n', cert_bin)]
             # print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
-            # print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
+            print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
             # print("total_precision @ 1.0:", stats[("total_precision",1.0)])
 
     return stats
@@ -404,7 +427,7 @@ def run_and_save_stats(models):
     y[y!=1] = 0
     one_hot_encoder.fit(X)
 
-    data = train_test_split(X, y, train_size=100)
+    data = biased_train_test_split(X, y, train_size=100)
 
     X_train, X_test, y_train, y_test = data
 
@@ -445,7 +468,7 @@ for i in range(10):
     # seed = 5545
     # seed = 4855
     # seed = 8931
-    np.random.seed(i)
+    np.random.seed(i+10)
     print("------------------------------------")
     run_and_save_stats(models)
 # X_one_hot = one_hot_encoder.transform(X).toarray()
