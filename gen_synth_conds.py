@@ -88,7 +88,7 @@ def random_uniform_data(n_samples, n_feats, n_feat_bound=6):
     data = np.random.randint(1, n_feat_bound, size=(n_samples, n_feats))
     return data
 
-def ensure_violates(x, conj, n_feat_bound, prob=.25, near_violate=False):
+def ensure_violates(x, conj, n_feat_bound, prob=.1, near_violate=False):
     if(near_violate):
         x[conj['ind']] = conj['val']
         # print("MID:", x[conj['ind']], conj['val'])
@@ -212,8 +212,8 @@ def gen_synthetic_dnf_data(n_samples,
                           neg_conj_probs=.2,
                           
                           force_same_vals=False,
-                          neg_violate=False,
-                          neg_near_violate=False):
+                          neg_violate=True,
+                          neg_near_violate=True):
     
     if hasattr(vals_per_feat, "__call__"):
         n_feat_bound = np.reshape([vals_per_feat()+1 for _ in range(n_feats)], (1,n_feats))
@@ -221,7 +221,7 @@ def gen_synthetic_dnf_data(n_samples,
         n_feat_bound = vals_per_feat + 1
     # print(vals_per_feat.shape)
     X = random_uniform_data(n_samples, n_feats, n_feat_bound)
-    y = np.zeros(len(X))
+    y = np.zeros(len(X), dtype=np.int32)
     dnf = random_dnf(X, conj_len, num_conj,
             dupl_lit_prob, force_same_vals)
     neg_dnf = random_dnf(X, neg_conj_len, num_neg_conj,
