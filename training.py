@@ -234,25 +234,29 @@ def train_or_load_rep(domain, when, use_proc, active=False, n_prob=100, rep=0,
 
 from multiprocessing import Process, Queue
 def train_reps(domain, when, use_proc, active=False, n_prob=100, reps=40, start=0,
-                force_run=False):
+                force_run=False, sep_process=False):
     from agent_configs import make_agent
     stat_lst = []
     wp_stat_lst = []
     cert_stat_lst = []
     for i in range(start, reps):
+        args = (domain, when, use_proc, active, n_prob, i, force_run)
+        if(sep_process):
+            # Run train_or_load_rep in seperate process 
+            def run(queue, *args):
+                tup = train_or_load_rep(*args)
+                queue.put(tup)
+            queue = Queue()
+            p = Process(target=run,
+             args=(queue, *args))
+            p.start()
 
-        # Run train_or_load_rep in seperate process 
-        def run(queue, *args):
+            # These block until the process terminates
+            tup = queue.get()
+            p.join() 
+        else:
+            print("THIS HAPPNED")
             tup = train_or_load_rep(*args)
-            queue.put(tup)
-        queue = Queue()
-        p = Process(target=run,
-         args=(queue, domain, when, use_proc, active, n_prob, i, force_run))
-        p.start()
-
-        # These block until the process terminates
-        tup = queue.get()
-        p.join() 
         
         # stats, wp_stats, cert_stats = train_or_load_rep(
         #     domain, when, use_proc, n_prob, i, force_run, add_cert_stats)
@@ -264,14 +268,15 @@ def train_reps(domain, when, use_proc, active=False, n_prob=100, reps=40, start=
     return stat_lst, wp_stat_lst, cert_stat_lst
 
 def train_or_load_condition(domain, when, use_proc, active=False,
-                            reps=40, start=0, n_prob=100, force_run=False):
+                            reps=40, start=0, n_prob=100, force_run=False, sep_process=False):
     ps = '-proc' if use_proc else ''
     _as = '-active' if active else ''
     file_name = f"saves/{domain}-{when}{ps}{_as}-{n_prob}x{reps}.pickle"
     
     if(not os.path.exists(file_name) or force_run):
         stat_lst, wp_stat_lst, cert_stat_lst = train_reps(
-            domain, when, use_proc, active, reps=reps, n_prob=n_prob, start=start
+            domain, when, use_proc, active, reps=reps, n_prob=n_prob, start=start,
+            force_run=force_run, sep_process=sep_process
         )
 
         # Don't average stats for fill-in runs that don't cover all reps
@@ -347,7 +352,16 @@ if __name__ == "__main__":
     elif("s30" in sys.argv):
         start = 30
 
-    train_or_load_condition(domain, model, use_proc, active=active, n_prob=100, reps=40, start=start)
+    force_run = False
+    if("force" in sys.argv):
+        force_run = True
+
+    sep_process = False
+    if("sepp" in sys.argv):
+        sep_process = True
+
+    train_or_load_condition(domain, model, use_proc, active=active, n_prob=100, reps=40, start=start,
+        force_run=force_run, sep_process=sep_process)
     
 
     # for res in results:
