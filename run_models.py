@@ -260,7 +260,7 @@ lam_e = 1.0
 lam_l = 25.0
 s_kwargs = {
     # "split_choice" : "dyn_all_near_max",
-    # "split_choice" : "all_max",
+    "split_choice" : "all_max",
     # "split_choice" : "all_near_max",
     "pred_kind" : "prob"
 }
@@ -272,15 +272,15 @@ models = {
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_e_l" : {"model": STANDClassifier(**s_kwargs, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
+    # "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
-    "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : dt_cert_fn },
-    # "stand_dyn" : {"model": STANDClassifier(split_choice="dyn_all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
-    #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_anm" : {"model": STANDClassifier(split_choice="all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
+    # "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : dt_cert_fn },
+    "stand_dyn" : {"model": STANDClassifier(split_choice="dyn_all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
          "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_amax" : {"model": STANDClassifier(split_choice="all_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
-    #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_near" : {"model": STANDClassifier(split_choice="all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
+         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_max" : {"model": STANDClassifier(split_choice="all_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
+         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     
     # "stand_leafs" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="max_leaves"),
     #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
@@ -289,6 +289,9 @@ models = {
     # "stand_prob" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="prob"),
     #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 }
+
+# NOTES:
+# 
 
 
 def test_model(name, config, data, one_hot_encoder, 
@@ -380,6 +383,7 @@ def test_model(name, config, data, one_hot_encoder,
     # print("Accuracies: ", holdout_accuracies)
     print("Accuracy@10: ", holdout_accuracies[int(10/incr)])
     print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
+    print("Accuracy@50: ", holdout_accuracies[int(20/incr)])
     print("Accuracy   : ", holdout_accuracies[-1])
     
     if(cert_fn and calc_certs):
@@ -392,7 +396,7 @@ def test_model(name, config, data, one_hot_encoder,
         # print("prod_monot:", stats["prod_monot"])
         #print("w_prod_monot:", stats["w_prod_monot"])
 
-        # print("total_prod_monot:", stats["total_prod_monot"])
+        print("total_prod_monot:", stats["total_prod_monot"])
         # print("total_w_prod_monot:", stats["total_w_prod_monot"])
         # print("total_FP_reocc:", stats["total_FP_reocc"])
         # print("total_FN_reocc:", stats["total_FN_reocc"])
@@ -452,7 +456,7 @@ def run_and_save_stats(models):
 
     X, y, dnf = gen_synthetic_dnf_data(
                             n_samples=2200,
-                            n_feats=500,
+                            n_feats=400,
                             vals_per_feat= lambda : min_two_possion(3),
                             pos_prop=.5,
 
@@ -463,7 +467,7 @@ def run_and_save_stats(models):
                             dupl_lit_prob=0.3,
                             conj_probs=.28,
 
-                            neg_conj_len=lambda : min_two_possion(3),
+                            neg_conj_len=lambda : min_two_possion(4),
                             num_neg_conj=100,
                             neg_dupl_lit_prob=0.1,
                             neg_conj_probs=.8,
