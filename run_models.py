@@ -87,7 +87,8 @@ def biased_train_test_split(X, y, train_size=100,
 
 
 DEFAULT_CERT_BINS = [
-    (.50, .60), (.60, .70), (.70, .80), (.80, .90),
+    # (.50, .60), (.60, .70), (.70, .80), (.80, .90),
+    (.50, .55), (.55, .60), (.60, .65), (.65, .70), (.70, .75), (.75, .80), (.80, .85), (.85, .90),
     (.90, .92), (.92, .94), (.94, .96), (.96, .98), (.98, 1.0), (1.0, 1.0)]
 
 # -----------------------------------------------------------
@@ -255,32 +256,69 @@ def dt_cert_fn(classifier, X_nom_subset):
     preds = classifier.predict(X_nom_subset)
     return np.where(preds==1, 1.0, -1.0)
 
-lam_p = 1.0
-lam_e = 1.0
-lam_l = 25.0
+lam_p = 25.0
+lam_e = 50.0
+lam_l = 50.0
 s_kwargs = {
-    # "split_choice" : "dyn_all_near_max",
-    "split_choice" : "all_max",
+    "split_choice" : "dyn_all_near_max",
+    # "split_choice" : "all_max",
     # "split_choice" : "all_near_max",
-    "pred_kind" : "prob"
+    "pred_kind" : "prob",
+    "slip" : 0.25
 }
 
 models = {
     # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_nos" : {"model": STANDClassifier(**s_kwargs, w_path_slip=False), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
     # "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_e_l" : {"model": STANDClassifier(**s_kwargs, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_w_slip" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, w_path_slip=True),
+        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
+    # "stand_p5_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=5.0, lam_e=10.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p10_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=10.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p25_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=25.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p50_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=50.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
+    # "stand_p_e5_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=5.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e10_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=10.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e25_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=25.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e50_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=50.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e100_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=100.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
+    # "stand_p_e_l5" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=5.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l10" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=10.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l25" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=25.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l50" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=50.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l100" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=100.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
+    # "stand_sl0" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_sl5" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.05), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_sl10" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.10), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_sl15" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.15), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_sl20" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.20), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_sl25" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.25), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_sl30" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.3), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_sl40" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.4), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_sl50" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.5), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
     # "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : dt_cert_fn },
-    "stand_dyn" : {"model": STANDClassifier(split_choice="dyn_all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
-         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_near" : {"model": STANDClassifier(split_choice="all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
-         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_max" : {"model": STANDClassifier(split_choice="all_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
-         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_dyn" : {"model": STANDClassifier(split_choice="dyn_all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
+         # "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_near" : {"model": STANDClassifier(split_choice="all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
+    #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    
+    # "stand_max" : {"model": STANDClassifier(split_choice="all_max", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
+    #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
+    
     
     # "stand_leafs" : {"model": STANDClassifier(**s_kwargs, lam_p=lam, lam_e=lam, pred_kind="max_leaves"),
     #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
@@ -292,6 +330,12 @@ models = {
 
 # NOTES:
 # 
+# def train_gen(X_train, y_train, active_lrn=False):
+
+#     covered = []
+
+#     print(X_train, y_train)
+
 
 
 def test_model(name, config, data, one_hot_encoder, 
@@ -373,18 +417,18 @@ def test_model(name, config, data, one_hot_encoder,
         
     # if(name == "stand_p"):
     #     print(model)
-    print()
-    print(name)
+    # print()
+    # print(name)
 
     stats = {"model_name" : name,
              "accuracies" :  holdout_accuracies,
              "accuracy" : holdout_accuracies[-1],
             }
     # print("Accuracies: ", holdout_accuracies)
-    print("Accuracy@10: ", holdout_accuracies[int(10/incr)])
-    print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
-    print("Accuracy@50: ", holdout_accuracies[int(20/incr)])
-    print("Accuracy   : ", holdout_accuracies[-1])
+    # print("Accuracy@10: ", holdout_accuracies[int(10/incr)])
+    # print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
+    # print("Accuracy@50: ", holdout_accuracies[int(50/incr)])
+    # print("Accuracy   : ", holdout_accuracies[-1])
     
     if(cert_fn and calc_certs):
 
@@ -396,10 +440,13 @@ def test_model(name, config, data, one_hot_encoder,
         # print("prod_monot:", stats["prod_monot"])
         #print("w_prod_monot:", stats["w_prod_monot"])
 
-        print("total_prod_monot:", stats["total_prod_monot"])
-        # print("total_w_prod_monot:", stats["total_w_prod_monot"])
+        # print("total_prod_monot:", stats["total_prod_monot"])
+        print("total_w_prod_monot:", stats["total_w_prod_monot"])
         # print("total_FP_reocc:", stats["total_FP_reocc"])
         # print("total_FN_reocc:", stats["total_FN_reocc"])
+
+        avg_abs_prec_res = 0.0
+        n_preds = 0.0
 
         for cert_bin in DEFAULT_CERT_BINS:
             c_min, c_max = cert_bin
@@ -411,6 +458,14 @@ def test_model(name, config, data, one_hot_encoder,
             # print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
             # print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
             # print("total_precision @ 1.0:", stats[("total_precision",1.0)])
+
+            avg_abs_prec_res += np.abs((prec-c_mean)) * bin_n
+            n_preds += bin_n
+        avg_abs_prec_res /= n_preds
+        stats['avg_abs_prec_res'] = avg_abs_prec_res
+
+        # print(f"avg_abs_prec_res:", avg_abs_prec_res)
+
 
     return stats
 
@@ -475,7 +530,7 @@ def run_and_save_stats(models):
                             force_same_vals=False)
 
 
-    print_dnf(dnf)
+    # print_dnf(dnf)
     y[y!=1] = 0
     one_hot_encoder.fit(X)
 
@@ -498,7 +553,7 @@ def run_and_save_stats(models):
         is_stand = name == "stand"
 
         stats = test_model(name, config, data, one_hot_encoder, 
-                    incr=True, is_stand=is_stand, calc_certs=True)
+                    incr=10, is_stand=is_stand, calc_certs=True)
         # print("SEED:", seed)
         stats_by_model[name] = stats
 
@@ -515,14 +570,14 @@ def run_and_save_stats(models):
 # seed = 8931
 # np.random.seed(seed)
 # seeds = np.arange(100)
-for i in range(100):
+for i in range(10):
 
     # seed = int(10000*py_random())
     # seed = 5545
     # seed = 4855
     # seed = 8931
     np.random.seed(i+10)
-    print("------------------------------------")
+    # print("------------------------------------")
     run_and_save_stats(models)
 # X_one_hot = one_hot_encoder.transform(X).toarray()
 
