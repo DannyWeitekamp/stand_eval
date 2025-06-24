@@ -14,6 +14,7 @@ import pickle
 from datetime import datetime
 import os
 from random import random as py_random
+from numba import njit
 
 import time
 class PrintElapse():
@@ -236,7 +237,7 @@ def xg_cert_fn(classifier, X_nom_subset):
 
 def stand_cert_fn(classifier, X_nom_subset):
     # print("STAND")
-    probs, labels  = classifier.predict_prob(X_nom_subset, None)
+    probs, labels  = classifier.predict_proba(X_nom_subset, None)
 
     # print(probs.shape, labels)
     # probs = probs[0]
@@ -264,21 +265,30 @@ s_kwargs = {
     # "split_choice" : "all_max",
     # "split_choice" : "all_near_max",
     "pred_kind" : "prob",
-    "slip" : 0.25
+    "slip" : 0.25,
+    "w_path_slip" : True,
 }
 
 models = {
     # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_active" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
     # "stand_nos" : {"model": STANDClassifier(**s_kwargs, w_path_slip=False), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
     # "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_e_l" : {"model": STANDClassifier(**s_kwargs, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_w_slip" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, w_path_slip=True),
+    
+    
+    "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
+    # "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+
+    
+    # "stand_w_slip" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, w_path_slip=True),
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
     # "stand_p5_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=5.0, lam_e=10.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p10_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=10.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
@@ -308,6 +318,7 @@ models = {
     # "stand_sl50" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.5), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
     # "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
+    # "xg_boost_active" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : dt_cert_fn },
     # "stand_dyn" : {"model": STANDClassifier(split_choice="dyn_all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
@@ -328,24 +339,99 @@ models = {
     #      "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 }
 
+@njit(cache=True)
+def mapback_ind_mask_subset(mask, inds):
+    out_inds = -np.ones(len(inds), dtype=np.int64)
+    for j, ind in enumerate(inds):
+
+        k = 0
+        for i, tf in enumerate(mask):
+            if(tf):
+                if(ind <= k):
+                    out_inds[j] = i
+                    break
+                k +=1
+            else:
+                continue
+        # out_inds[j] = -1
+    return out_inds
+
 # NOTES:
 # 
-# def train_gen(X_train, y_train, active_lrn=False):
+def train_gen(X_train, y_train, incr, n_train=None, 
+              active_lrn_model=None, is_stand=False):    
+    if(n_train is None):
+        n_train = len(X_train)
 
-#     covered = []
+    if(not isinstance(incr, bool)):
+        rng = range(0, n_train, incr)
+    else:
+        rng = range(0, n_train) if(incr) else [n_train]
 
-#     print(X_train, y_train)
+    if(active_lrn_model is not None):
+        not_covered = np.ones(len(X_train), dtype=np.bool_)
+        X_train_buff = np.zeros((n_train, X_train.shape[1]), dtype=np.int32)
+        y_train_buff = np.zeros(n_train, dtype=np.int32)
+    #     print("ACTIVE")
+    # else:
+    #     print("NOT ACTIVE")
+
+    for i in rng:
+        end = i+int(incr)
+
+        if(active_lrn_model is None):
+            X_train_slc = X_train[0:end]
+            y_train_slc = y_train[0:end]
+            yield X_train_slc, y_train_slc
+        else:
+            if(i >= 2):
+                if(is_stand):
+                    probs, labels = active_lrn_model.predict_cert(X_train[not_covered], None)
+                else:
+                    probs = active_lrn_model.predict_proba(X_train[not_covered])
+
+                max_probs = np.max(probs, axis=1)
+                # pos_probs = probs[:,0]
+                min_inds = np.argsort(max_probs)[:int(incr)]
+                min_inds = mapback_ind_mask_subset(not_covered, min_inds)
+
+                if(is_stand):
+                    
+                    print()
+                    print("v")
+                    active_lrn_model.bloop(X_train[min_inds], None)
+                    print(active_lrn_model)
+                    # print("^")
+                    # active_lrn_model.bloop(X_train[np.argsort(-max_probs)[:int(incr)]], None)
+                # print("<<", probs)
+                # print(">>", np.sort(max_probs)[:int(incr)])
+                
+                # print(np.sort(max_probs)[:int(incr)])
+                # print("<<", np.all(not_covered[min_inds]))
+                not_covered[min_inds] = False
+            else:
+                min_inds = np.arange(i,end)
+
+            X_train_buff[i:end] = X_train[min_inds]
+            y_train_buff[i:end] = y_train[min_inds]
+
+            X_train_slc = X_train_buff[0:end]
+            y_train_slc = y_train_buff[0:end]
+
+            yield X_train_slc, y_train_slc
 
 
 
 def test_model(name, config, data, one_hot_encoder, 
-                incr=True, is_stand=False, calc_certs=False):
+                incr=True, n_train=100, 
+                is_stand=False, calc_certs=False):
     X_train, X_test, y_train, y_test = data
 
     model = config['model']
     is_stand = config['is_stand']
     one_hot = config['one_hot']
     cert_fn = config['cert_fn']
+    active_lrn = config.get('active_lrn', False)
     holdout_certs = []
     holdout_accuracies = []
 
@@ -355,15 +441,15 @@ def test_model(name, config, data, one_hot_encoder,
         X_train = one_hot_encoder.transform(X_train).toarray()
         X_test = one_hot_encoder.transform(X_test).toarray()
     
-    if(not isinstance(incr, bool)):
-        rng = range(1,len(X_train)+1,incr)
-    else:
-        rng = range(1,len(X_train)+1) if(incr) else [len(X_train)]
+    
+    active_lrn_model = model if active_lrn else None
+    tg = train_gen(X_train, y_train, incr, n_train, 
+                    active_lrn_model, is_stand)
 
-    for i in rng:
-        # Fit on subset of training set 
-        X_train_slc = X_train[0:i]
-        y_train_slc = y_train[0:i]
+    for X_train_slc, y_train_slc in tg:
+        # # Fit on subset of training set 
+        # X_train_slc = X_train[0:i]
+        # y_train_slc = y_train[0:i]
 
         # with PrintElapse(f"fit {name}"):
         if(is_stand):
@@ -388,16 +474,16 @@ def test_model(name, config, data, one_hot_encoder,
         # print("--------------------------------")
         # fails = X_test[~corrs]
         # print("BEFORE:", accuracy_score(y_test, y_preds))
-        # probs, labels = model.predict_prob(X_test, None)
+        # probs, labels = model.predict_proba(X_test, None)
         # best_ind = np.argmax(probs, axis=1)
         # new_y_preds = labels[best_ind]
         # print("AFTER:", accuracy_score(y_test, new_y_preds))
 
         # model.predict(X_test[:1], None)
-        # model.predict_prob(X_test[24:26], None)
+        # model.predict_proba(X_test[24:26], None)
 
         # print("--------------------------------")
-        # model.predict_prob(fails, None)
+        # model.predict_proba(fails, None)
         # raise ValueError()
         # print("--------------------------------")
         #############################
@@ -417,8 +503,8 @@ def test_model(name, config, data, one_hot_encoder,
         
     # if(name == "stand_p"):
     #     print(model)
-    # print()
-    # print(name)
+    print()
+    print(name)
 
     stats = {"model_name" : name,
              "accuracies" :  holdout_accuracies,
@@ -426,8 +512,8 @@ def test_model(name, config, data, one_hot_encoder,
             }
     # print("Accuracies: ", holdout_accuracies)
     # print("Accuracy@10: ", holdout_accuracies[int(10/incr)])
-    # print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
-    # print("Accuracy@50: ", holdout_accuracies[int(50/incr)])
+    print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
+    print("Accuracy@50: ", holdout_accuracies[int(50/incr)])
     # print("Accuracy   : ", holdout_accuracies[-1])
     
     if(cert_fn and calc_certs):
@@ -441,7 +527,7 @@ def test_model(name, config, data, one_hot_encoder,
         #print("w_prod_monot:", stats["w_prod_monot"])
 
         # print("total_prod_monot:", stats["total_prod_monot"])
-        print("total_w_prod_monot:", stats["total_w_prod_monot"])
+        # print("total_w_prod_monot:", stats["total_w_prod_monot"])
         # print("total_FP_reocc:", stats["total_FP_reocc"])
         # print("total_FN_reocc:", stats["total_FN_reocc"])
 
@@ -456,7 +542,7 @@ def test_model(name, config, data, one_hot_encoder,
             TP_n = stats[('TP_n', cert_bin)]
             bin_n = stats[('bin_n', cert_bin)]
             # print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
-            # print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
+            print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
             # print("total_precision @ 1.0:", stats[("total_precision",1.0)])
 
             avg_abs_prec_res += np.abs((prec-c_mean)) * bin_n
@@ -464,7 +550,7 @@ def test_model(name, config, data, one_hot_encoder,
         avg_abs_prec_res /= n_preds
         stats['avg_abs_prec_res'] = avg_abs_prec_res
 
-        # print(f"avg_abs_prec_res:", avg_abs_prec_res)
+        print(f"avg_abs_prec_res:", avg_abs_prec_res)
 
 
     return stats
@@ -496,9 +582,7 @@ def ensure_first_neg_pos(X_train, y_train):
 
     return X_train, y_train
 
-
-def run_and_save_stats(models):
-    time = datetime.now().strftime('%m-%d-%Y_%H:%M:%S')
+def gen_data(n_train=200, n_test=2000):
 
     one_hot_encoder = OneHotEncoder()
 
@@ -510,7 +594,7 @@ def run_and_save_stats(models):
     
 
     X, y, dnf = gen_synthetic_dnf_data(
-                            n_samples=2200,
+                            n_samples=n_train + n_test,
                             n_feats=400,
                             vals_per_feat= lambda : min_two_possion(3),
                             pos_prop=.5,
@@ -530,11 +614,11 @@ def run_and_save_stats(models):
                             force_same_vals=False)
 
 
-    # print_dnf(dnf)
+    print_dnf(dnf)
     y[y!=1] = 0
     one_hot_encoder.fit(X)
 
-    data = biased_train_test_split(X, y, train_size=100, true_prop=.8)
+    data = biased_train_test_split(X, y, train_size=n_train, true_prop=.8)
 
     X_train, X_test, y_train, y_test = data
 
@@ -542,24 +626,26 @@ def run_and_save_stats(models):
     # print("=1 Prop", np.sum(y_train==1)/len(y_train), np.sum(y_test==1)/len(y_test))
 
     # raise ValueError()
-    X_train, y_train = front_load_neg(X_train, y_train)
+    # X_train, y_train = front_load_neg(X_train, y_train)
     X_train, y_train = ensure_first_neg_pos(X_train, y_train)
 
     data = (X_train, X_test, y_train, y_test)
+    return data, one_hot_encoder
 
+
+def run_and_save_stats(models):
+    time = datetime.now().strftime('%m-%d-%Y_%H:%M:%S')
+
+    data, one_hot_encoder = gen_data();
 
     stats_by_model = {}
     for i, (name, config) in enumerate(models.items()):
         is_stand = name == "stand"
-
         stats = test_model(name, config, data, one_hot_encoder, 
                     incr=10, is_stand=is_stand, calc_certs=True)
-        # print("SEED:", seed)
         stats_by_model[name] = stats
 
-
-    os.makedirs("sim_saves", exist_ok=True)
-    
+    os.makedirs("sim_saves", exist_ok=True)    
     with open(f"sim_saves/run_{time}", 'wb+') as f:
         pickle.dump(stats_by_model, f, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -576,8 +662,8 @@ for i in range(10):
     # seed = 5545
     # seed = 4855
     # seed = 8931
-    np.random.seed(i+10)
-    # print("------------------------------------")
+    np.random.seed(i+22)
+    print("------------------------------------")
     run_and_save_stats(models)
 # X_one_hot = one_hot_encoder.transform(X).toarray()
 
