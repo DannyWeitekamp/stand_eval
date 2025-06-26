@@ -269,6 +269,7 @@ s_kwargs = {
     "w_path_slip" : True,
 }
 
+
 models = {
     # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_active" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
@@ -283,8 +284,8 @@ models = {
     "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    # "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+    "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
 
     
     # "stand_w_slip" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, w_path_slip=True),
@@ -396,11 +397,24 @@ def train_gen(X_train, y_train, incr, n_train=None,
                 min_inds = mapback_ind_mask_subset(not_covered, min_inds)
 
                 if(is_stand):
-                    
                     print()
                     print("v")
-                    active_lrn_model.bloop(X_train[min_inds], None)
+                    print(np.sort(max_probs))
+                    min_10 = mapback_ind_mask_subset(not_covered, np.argsort(max_probs)[:10])
+                    print("y", y_train[min_10])
+                    active_lrn_model.bloop(X_train[min_10], None)
                     print(active_lrn_model)
+
+                    conds = active_lrn_model.get_conds(1)
+                    for conj in conds:
+                        cs = []
+                        for lit_option in conj:
+                            ss = []
+                            for lit in lit_option:
+                                ss.append(f"[{lit[1]}]{'!=' if lit[0] else '=='}{lit[2]}")
+                            cs.append(f"({' | '.join(ss)})")
+                        print(", ".join(cs))
+
                     # print("^")
                     # active_lrn_model.bloop(X_train[np.argsort(-max_probs)[:int(incr)]], None)
                 # print("<<", probs)
@@ -417,6 +431,10 @@ def train_gen(X_train, y_train, incr, n_train=None,
 
             X_train_slc = X_train_buff[0:end]
             y_train_slc = y_train_buff[0:end]
+
+            # ex_mask = y_train_slc!=1.0
+            # X_train_slc = np.concatenate([X_train_slc, X_train_slc[ex_mask]])
+            # y_train_slc = np.concatenate([y_train_slc, y_train_slc[ex_mask]])
 
             yield X_train_slc, y_train_slc
 
@@ -526,8 +544,8 @@ def test_model(name, config, data, one_hot_encoder,
         # print("prod_monot:", stats["prod_monot"])
         #print("w_prod_monot:", stats["w_prod_monot"])
 
-        # print("total_prod_monot:", stats["total_prod_monot"])
-        # print("total_w_prod_monot:", stats["total_w_prod_monot"])
+        print("total_prod_monot:", stats["total_prod_monot"])
+        print("total_w_prod_monot:", stats["total_w_prod_monot"])
         # print("total_FP_reocc:", stats["total_FP_reocc"])
         # print("total_FN_reocc:", stats["total_FN_reocc"])
 
@@ -582,7 +600,9 @@ def ensure_first_neg_pos(X_train, y_train):
 
     return X_train, y_train
 
+dnf = None
 def gen_data(n_train=200, n_test=2000):
+    global dnf
 
     one_hot_encoder = OneHotEncoder()
 
@@ -642,7 +662,8 @@ def run_and_save_stats(models):
     for i, (name, config) in enumerate(models.items()):
         is_stand = name == "stand"
         stats = test_model(name, config, data, one_hot_encoder, 
-                    incr=10, is_stand=is_stand, calc_certs=True)
+                    incr=1, is_stand=is_stand, calc_certs=True)
+        print_dnf(dnf)
         stats_by_model[name] = stats
 
     os.makedirs("sim_saves", exist_ok=True)    
@@ -656,13 +677,13 @@ def run_and_save_stats(models):
 # seed = 8931
 # np.random.seed(seed)
 # seeds = np.arange(100)
-for i in range(10):
+for i in range(1):
 
     # seed = int(10000*py_random())
     # seed = 5545
     # seed = 4855
     # seed = 8931
-    np.random.seed(i+22)
+    np.random.seed(i+23)
     print("------------------------------------")
     run_and_save_stats(models)
 # X_one_hot = one_hot_encoder.transform(X).toarray()
