@@ -280,6 +280,8 @@ models = {
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_e_l" : {"model": STANDClassifier(**s_kwargs, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     
+    "stand_p_e_l_SC" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     
     "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
         "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
