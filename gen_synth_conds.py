@@ -109,7 +109,6 @@ def ensure_violates(x, conj, n_feat_bound, prob=.1, near_violate=False):
             else:
                 new_val = np.random.randint(1, n_feat_bound)
         x[ind] = new_val
-    # print("end")
 
 
 
