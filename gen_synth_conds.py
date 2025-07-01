@@ -267,9 +267,9 @@ if __name__ == "__main__":
                           vals_per_feat= lambda : min_two_possion(3),
                           pos_prop=.5,
 
-                          conj_len= lambda : min_one_possion(1), 
-                          num_conj= lambda : min_two_possion(2),
-                          dupl_lit_prob=0.3,
+                          conj_len= lambda : min_one_possion(2), 
+                          num_conj= 2,#lambda : min_two_possion(2),
+                          dupl_lit_prob=0.0,
                           conj_probs=.28,
 
                           neg_conj_len=lambda : min_two_possion(3),

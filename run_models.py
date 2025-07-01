@@ -441,17 +441,17 @@ def train_gen(X_train, y_train, incr, n_train=None,
                 min_inds = np.argsort(max_probs)[:int(incr)]
                 min_inds = mapback_ind_mask_subset(not_covered, min_inds)
 
-                if(is_stand):
-                    print()
-                    print("v")
-                    print(np.sort(max_probs))
-                    min_10 = mapback_ind_mask_subset(not_covered, np.argsort(max_probs)[:10])
-                    print("y", y_train[min_10])
-                    active_lrn_model.bloop(X_train[min_10], None)
-                    print(active_lrn_model)
+                # if(is_stand):
+                #     print()
+                #     print("v")
+                #     print(np.sort(max_probs))
+                #     min_10 = mapback_ind_mask_subset(not_covered, np.argsort(max_probs)[:10])
+                #     print("y", y_train[min_10])
+                #     active_lrn_model.bloop(X_train[min_10], None)
+                #     print(active_lrn_model)
 
-                    conds = active_lrn_model.get_conds(1)
-                    print(repr_conds(conds))
+                #     conds = active_lrn_model.get_conds(1)
+                #     print(repr_conds(conds))
 
                     # print("^")
                     # active_lrn_model.bloop(X_train[np.argsort(-max_probs)[:int(incr)]], None)
@@ -662,14 +662,14 @@ def gen_data(n_train=100, n_test=2000):
                             pos_prop=.5,
 
                             conj_len= lambda : min_one_possion(2), 
-                            num_conj= 2,
+                            num_conj= 1,
                             # conj_len=2,
                             # num_conj=1,
                             dupl_lit_prob=0.0,
                             conj_probs=.28,
 
                             neg_conj_len=lambda : min_two_possion(5),
-                            num_neg_conj=000,
+                            num_neg_conj=100,
                             neg_dupl_lit_prob=0.2,
                             neg_conj_probs=.8,
 
