@@ -297,9 +297,9 @@ foil_kwargs = {
 
 
 models = {
-    "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_SC" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover"), 
-        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_SC" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover"), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
     # "stand_active" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
     # "stand_nos" : {"model": STANDClassifier(**s_kwargs, w_path_slip=False), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
@@ -308,6 +308,12 @@ models = {
     # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_e_l" : {"model": STANDClassifier(**s_kwargs, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l_hybrid" : {"model": STANDClassifier(**s_kwargs, fit_method="hybrid", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
+    # "stand_p_e_l_hybrid_active" : {"model": STANDClassifier(**s_kwargs, fit_method="hybrid", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+
     
     # "stand_p_e_l_SC" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
@@ -315,11 +321,11 @@ models = {
     # "stand_p_e_l_SC_active" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
     
-    # "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    # "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+    "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
 
     
     # "stand_w_slip" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, w_path_slip=True),
@@ -352,8 +358,8 @@ models = {
     # "stand_sl40" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.4), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_sl50" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.5), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    # "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
-    # "xg_boost_active" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
+    "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
+    "xg_boost_active" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
 
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "random_forest_active" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn, "active_lrn" : True},
@@ -429,6 +435,7 @@ def train_gen(X_train, y_train, incr, n_train=None,
                 else:
                     probs = active_lrn_model.predict_proba(X_train[not_covered])
 
+                # print("!!!", X_train[not_covered].shape)
                 max_probs = np.max(probs, axis=1)
                 # pos_probs = probs[:,0]
                 min_inds = np.argsort(max_probs)[:int(incr)]
@@ -563,7 +570,7 @@ def test_model(name, config, data, one_hot_encoder,
         # print("Accuracy@10: ", holdout_accuracies[int(10/incr)])
         print("Accuracy@20: ", holdout_accuracies[int(20/incr)])
         print("Accuracy@50: ", holdout_accuracies[int(50/incr)])
-        print("Accuracy   : ", holdout_accuracies[-1])
+    print("Accuracy   : ", holdout_accuracies[-1])
         
     if(cert_fn and calc_certs):
 
@@ -590,7 +597,7 @@ def test_model(name, config, data, one_hot_encoder,
             prec = stats[('total_precision', cert_bin)]
             TP_n = stats[('TP_n', cert_bin)]
             bin_n = stats[('bin_n', cert_bin)]
-            print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
+            # print(f"total_precision @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec:.2f} {TP_n}/{bin_n}")
             # print(f"precision_res @ {100*c_mean:.1f} +/- {100*c_hrng:.1f}: {prec-c_mean:.2f} {TP_n}/{bin_n}")
             # print("total_precision @ 1.0:", stats[("total_precision",1.0)])
 
@@ -601,10 +608,10 @@ def test_model(name, config, data, one_hot_encoder,
 
         print(f"avg_abs_prec_res:", avg_abs_prec_res)
 
-    # if(is_stand):
-    #     print(model)
-    print(model)
-    print(repr_conds(model.get_conds(1)))
+    if(is_stand):
+        print(model)
+    # print(model)
+    # print(repr_conds(model.get_conds(1)))
 
     return stats
 
@@ -636,7 +643,7 @@ def ensure_first_neg_pos(X_train, y_train):
     return X_train, y_train
 
 dnf = None
-def gen_data(n_train=500, n_test=2000):
+def gen_data(n_train=100, n_test=2000):
     global dnf
 
     one_hot_encoder = OneHotEncoder()
@@ -655,15 +662,15 @@ def gen_data(n_train=500, n_test=2000):
                             pos_prop=.5,
 
                             conj_len= lambda : min_one_possion(2), 
-                            # num_conj= lambda : min_one_possion(2),
+                            num_conj= 2,
                             # conj_len=2,
-                            num_conj=3,
-                            dupl_lit_prob=0.1,
+                            # num_conj=1,
+                            dupl_lit_prob=0.0,
                             conj_probs=.28,
 
-                            neg_conj_len=lambda : min_two_possion(4),
-                            num_neg_conj=100,
-                            neg_dupl_lit_prob=0.1,
+                            neg_conj_len=lambda : min_two_possion(5),
+                            num_neg_conj=000,
+                            neg_dupl_lit_prob=0.2,
                             neg_conj_probs=.8,
 
                             force_same_vals=False)
@@ -678,7 +685,7 @@ def gen_data(n_train=500, n_test=2000):
     X_train, X_test, y_train, y_test = data
 
     #print("y_train", y_train)
-    # print("=1 Prop", np.sum(y_train==1)/len(y_train), np.sum(y_test==1)/len(y_test))
+    print("=1 Prop", np.sum(y_train==1)/len(y_train), np.sum(y_test==1)/len(y_test))
 
     # raise ValueError()
     # X_train, y_train = front_load_neg(X_train, y_train)
