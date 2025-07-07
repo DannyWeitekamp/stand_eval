@@ -1,0 +1,3 @@
+[submodule "VSSM"]
+	path = VSSM
+	url = https://github.com/Teachable-AI-Lab/version-space-condition-learning

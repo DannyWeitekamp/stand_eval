@@ -10,6 +10,7 @@ from stand.stand import STANDClassifier
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
+from vssm_wrap import VSSMWrapper
 import pickle
 from datetime import datetime
 import os
@@ -321,11 +322,11 @@ models = {
     # "stand_p_e_l_SC_active" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
     
-    "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+    # "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
 
     
     # "stand_w_slip" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, w_path_slip=True),
@@ -358,8 +359,10 @@ models = {
     # "stand_sl40" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.4), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_sl50" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.5), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
-    "xg_boost_active" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
+    # "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
+    # "xg_boost_active" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
+
+    "vssm" : {"model" : VSSMWrapper(), "is_stand" : False, "one_hot" : False, "cert_fn" : xg_cert_fn, "ifit": True}
 
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "random_forest_active" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn, "active_lrn" : True},
@@ -487,7 +490,9 @@ def test_model(name, config, data, one_hot_encoder,
     is_stand = config['is_stand']
     one_hot = config['one_hot']
     cert_fn = config['cert_fn']
+    ifit = config.get('ifit', False)
     active_lrn = config.get('active_lrn', False)
+    
     holdout_certs = []
     holdout_accuracies = []
 
@@ -507,19 +512,28 @@ def test_model(name, config, data, one_hot_encoder,
         # X_train_slc = X_train[0:i]
         # y_train_slc = y_train[0:i]
 
-        # with PrintElapse(f"fit {name}"):
-        if(is_stand):
-            model.fit(X_train_slc.astype(dtype=np.int32), None, y_train_slc)
-            # print(model)
-        else:
-            model.fit(X_train_slc, y_train_slc)
+        with PrintElapse(f"fit {name}"):
+
+            if(ifit):
+                if(is_stand):
+                    model.ifit(X_train_slc[-1].astype(dtype=np.int32), None, y_train_slc[-1])
+                else:
+                    model.ifit(X_train_slc[-1], y_train_slc[-1])
+            else:
+                if(is_stand):
+                    model.fit(X_train_slc.astype(dtype=np.int32), None, y_train_slc)
+                    # print(model)
+                else:
+                    model.fit(X_train_slc, y_train_slc)
 
         # with PrintElapse(f"preict {name}"):
         # Test on the test_set
-        if(is_stand):
-            y_preds = model.predict(X_test, None)
-        else:
-            y_preds = model.predict(X_test)
+
+        with PrintElapse(f"predict {name}"):
+            if(is_stand):
+                y_preds = model.predict(X_test, None)
+            else:
+                y_preds = model.predict(X_test)
 
 
 
