@@ -331,18 +331,23 @@ models = {
     
     # "stand_w_slip" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, w_path_slip=True),
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-
-    # "stand_p5_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=5.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p10_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=10.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p25_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=25.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    # "stand_p50_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=50.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    
+    "stand_p00_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=0.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p05_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=0.5, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p1_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=1.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p5_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=5.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p10_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=10.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p25_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=25.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p50_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=50.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
     # "stand_p_e5_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=5.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e10_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=10.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e25_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=25.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e50_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=50.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e100_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=100.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-
+    
+    # "stand_p_e_l05" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=5.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l1" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=5.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e_l5" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=5.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e_l10" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=10.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e_l25" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=25.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
@@ -362,7 +367,7 @@ models = {
     # "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
     # "xg_boost_active" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
 
-    "vssm" : {"model" : VSSMWrapper(), "is_stand" : False, "one_hot" : False, "cert_fn" : xg_cert_fn, "ifit": True}
+    # "vssm" : {"model" : VSSMWrapper(), "is_stand" : False, "one_hot" : False, "cert_fn" : xg_cert_fn, "ifit": True}
 
     # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
     # "random_forest_active" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn, "active_lrn" : True},
@@ -512,28 +517,28 @@ def test_model(name, config, data, one_hot_encoder,
         # X_train_slc = X_train[0:i]
         # y_train_slc = y_train[0:i]
 
-        with PrintElapse(f"fit {name}"):
+        # with PrintElapse(f"fit {name}"):
 
-            if(ifit):
-                if(is_stand):
-                    model.ifit(X_train_slc[-1].astype(dtype=np.int32), None, y_train_slc[-1])
-                else:
-                    model.ifit(X_train_slc[-1], y_train_slc[-1])
+        if(ifit):
+            if(is_stand):
+                model.ifit(X_train_slc[-1].astype(dtype=np.int32), None, y_train_slc[-1])
             else:
-                if(is_stand):
-                    model.fit(X_train_slc.astype(dtype=np.int32), None, y_train_slc)
-                    # print(model)
-                else:
-                    model.fit(X_train_slc, y_train_slc)
+                model.ifit(X_train_slc[-1], y_train_slc[-1])
+        else:
+            if(is_stand):
+                model.fit(X_train_slc.astype(dtype=np.int32), None, y_train_slc)
+                # print(model)
+            else:
+                model.fit(X_train_slc, y_train_slc)
 
         # with PrintElapse(f"preict {name}"):
         # Test on the test_set
 
-        with PrintElapse(f"predict {name}"):
-            if(is_stand):
-                y_preds = model.predict(X_test, None)
-            else:
-                y_preds = model.predict(X_test)
+        # with PrintElapse(f"predict {name}"):
+        if(is_stand):
+            y_preds = model.predict(X_test, None)
+        else:
+            y_preds = model.predict(X_test)
 
 
 
@@ -676,7 +681,7 @@ def gen_data(n_train=100, n_test=2000):
                             pos_prop=.5,
 
                             conj_len= lambda : min_one_possion(2), 
-                            num_conj= 1,
+                            num_conj= 2,
                             # conj_len=2,
                             # num_conj=1,
                             dupl_lit_prob=0.0,
@@ -722,8 +727,9 @@ def run_and_save_stats(models):
         print_dnf(dnf)
         stats_by_model[name] = stats
 
-    os.makedirs("sim_saves", exist_ok=True)    
-    with open(f"sim_saves/run_{time}", 'wb+') as f:
+    dirname = "p_hyper"
+    os.makedirs(dirname, exist_ok=True)    
+    with open(f"{dirname}/run_{time}", 'wb+') as f:
         pickle.dump(stats_by_model, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 

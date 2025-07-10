@@ -49,8 +49,9 @@ def random_conj(data, conj_len,
             
             
             # Randomly selection the literals and replace them
-            dupl_conjs = np.random.choice(unq_conj, size=min(len(dupl_inds), len(unq_conj)), replace=False)
-            conj[dupl_inds] = dupl_conjs
+            n_dup = min(len(dupl_inds), len(unq_conj))
+            dupl_conjs = np.random.choice(unq_conj, size=n_dup, replace=False)
+            conj[dupl_inds[:n_dup]] = dupl_conjs[:n_dup]
 
     # Sort inds by increasing  
     conj = conj[np.argsort(conj['ind'])]
