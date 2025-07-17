@@ -11,6 +11,7 @@ from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from vssm_wrap import VSSMWrapper
+from neural_net import NeuralClassifier
 import pickle
 from datetime import datetime
 import os
@@ -265,9 +266,9 @@ def dt_cert_fn(classifier, X_nom_subset):
     preds = classifier.predict(X_nom_subset)
     return np.where(preds==1, 1.0, -1.0)
 
-lam_p = 10.0 #25.0
-lam_e = 1.0#50.0
-lam_l = 50.0
+lam_p = 100 #25.0
+lam_e = 100 #50.0
+lam_l = 100
 
 shared_kwargs = {
     "split_choice" : "dyn_all_near_max",
@@ -298,17 +299,18 @@ foil_kwargs = {
 
 
 models = {
-    # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_SC" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover"), 
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    # "stand_active" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+    "stand_active" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
     # "stand_nos" : {"model": STANDClassifier(**s_kwargs, w_path_slip=False), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
     # "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_e_l" : {"model": STANDClassifier(**s_kwargs, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
     # "stand_p_e_l_hybrid" : {"model": STANDClassifier(**s_kwargs, fit_method="hybrid", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
@@ -322,29 +324,36 @@ models = {
     # "stand_p_e_l_SC_active" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
     
-    # "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    # "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+    "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
 
     
     # "stand_w_slip" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, w_path_slip=True),
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     
-    "stand_p00_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=0.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p05_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=0.5, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p1_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=1.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p5_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=5.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p10_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=10.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p25_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=25.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
-    "stand_p50_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=50.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p00_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=0.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p05_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=0.5, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p1_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=1.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p5_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=5.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p10_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=10.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p25_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=25.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p50_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=50.0, lam_e=lam_e, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
+    # "stand_p_e00_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=0.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e05_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=0.5, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e1_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=1.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e5_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=5.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e10_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=10.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e25_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=25.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e50_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=50.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e100_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=100.0, lam_l=lam_l), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+
+
+    "neural_net" : {"model": NeuralClassifier(), "is_stand" : False, "one_hot" : False, "cert_fn" : xg_cert_fn},
+    "neural_net_active" : {"model": NeuralClassifier(), "is_stand" : False, "one_hot" : False, "cert_fn" : xg_cert_fn, "active_lrn" : True},
     
     # "stand_p_e_l05" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=5.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_p_e_l1" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=5.0), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
@@ -364,15 +373,15 @@ models = {
     # "stand_sl40" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.4), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_sl50" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.5), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    # "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
-    # "xg_boost_active" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
+    "xg_boost" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
+    "xg_boost_active" : {"model": XGBClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
 
     # "vssm" : {"model" : VSSMWrapper(), "is_stand" : False, "one_hot" : False, "cert_fn" : xg_cert_fn, "ifit": True}
 
-    # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
-    # "random_forest_active" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn, "active_lrn" : True},
+    "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
+    "random_forest_active" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn, "active_lrn" : True},
 
-    # "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : dt_cert_fn},
+    "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : dt_cert_fn},
     # "decision_tree_s" : {"model": TreeClassifier(), "is_stand" : True, "one_hot" : True, "cert_fn" : dt_cert_fn},
 
     # "stand_dyn" : {"model": STANDClassifier(split_choice="dyn_all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
@@ -727,7 +736,8 @@ def run_and_save_stats(models):
         print_dnf(dnf)
         stats_by_model[name] = stats
 
-    dirname = "p_hyper"
+    # dirname = "e_hyper"
+    dirname = "sim_saves"
     os.makedirs(dirname, exist_ok=True)    
     with open(f"{dirname}/run_{time}", 'wb+') as f:
         pickle.dump(stats_by_model, f, protocol=pickle.HIGHEST_PROTOCOL)
