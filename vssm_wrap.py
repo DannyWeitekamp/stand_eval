@@ -1,4 +1,4 @@
-from VSSM.main import VSSM
+from vssm import VSSM
 import numpy as np
 
 class VSSMWrapper(VSSM):
@@ -24,7 +24,8 @@ class VSSMWrapper(VSSM):
         probs = np.zeros((len(X_nom),2))
         for i, x_nom in enumerate(X_nom):
             d = self._arr_to_d(x_nom)
-            p = super().score(d)
+            # p = super().score(d)
+            p = super().predict(d)
             probs[i,0] = 1.0-p
             probs[i,1] = p
         return probs

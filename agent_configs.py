@@ -4,13 +4,38 @@ common = {
     "where_learner": "mostspecific",
     "planner" : "setchaining",
     "explanation_choice" : "least_operations",
-    "find_neighbors" : True,
+    # "find_neighbors" : True,
+    # "error_on_bottom_out" : False,
+    # "when_args": {
+    #     "encode_relative" : True,
+    #     "check_sanity" : False,
+    #     "one_hot" : True
+    # },
+    # "when_learner": "stand",
+    "which_learner": "when_prediction",
+    "action_chooser" : "max_which_utility",
+    "suggest_uncert_neg" : True,
+
+    # "when_learner" : 'sklearndecisiontree',
+    
     "error_on_bottom_out" : False,
+    "one_skill_per_match" : True,
+    
+    "extra_features" : ["Match"],
+    # "when_args" : {"encode_relative" : True, },
+    
+    "should_find_neighbors" : True,
+
     "when_args": {
-        "encode_relative" : True,
-        "check_sanity" : False,
-        "one_hot" : True
+        "encode_relative" : False,
+        # "one_hot" : True,
+        # "rel_enc_min_sources": 1,
+        "check_sanity" : False
     },
+
+    "process_learner": "htnlearner",
+    "track_rollout_preseqs" : True,
+    "action_filter_args" : {"thresholds": [0.3, 0, -0.5, -0.75]}
 }
 
 mc_basic = {
@@ -20,7 +45,14 @@ mc_basic = {
 }
 
 mc_proc_lrn = {
+    "search_depth" : 2,
     "extra_features" : ["RemoveAll","SkillCandidates","Match"],
+    "when_args": {
+        "encode_relative" : True, 
+        "check_sanity" : False
+    },
+    # "implicit_reward_kinds" : ["unordered_groups"]
+    "implicit_reward_kinds" : None,
 }
 
 frac_basic = {
@@ -60,7 +92,30 @@ STAND = {
     "which_learner": "when_prediction",
     "action_chooser" : "max_which_utility",
     "suggest_uncert_neg" : True,
+    "when_args" : {
+        **common['when_args'],
+        "split_choice" : "dyn_all_near_max",
+        "slip" : 0.1,
+        "w_path_slip" : True,
+    }
 }
+
+STAND_HS = {
+    "when_learner": "stand",
+    "which_learner": "when_prediction",
+    "action_chooser" : "max_which_utility",
+    "suggest_uncert_neg" : True,
+    "when_args" : {
+        **common['when_args'],
+        "lam_p" : 25.0,
+        "lam_e" : 25.0,
+        "lam_l" : 50.0,
+        "split_choice" : "dyn_all_near_max",
+        "slip" : 0.1,
+        "w_path_slip" : True,
+    }
+}
+
 STAND_Relaxed ={
     "when_learner": "stand",
     "which_learner": "when_prediction",
@@ -84,29 +139,43 @@ XGB = {
     "which_learner": "when_prediction",
     "action_chooser" : "max_which_utility",
     "suggest_uncert_neg" : True,
+    "when_args" : {
+        **common['when_args'],
+        "one_hot" : True
+    }
 }
 
 agent_configs = {
     # MC
-    ("mc", "decision_tree", False) : {
+    ("mc", "decision_tree", True) : {
         **common,
         **mc_basic,
+        **mc_proc_lrn,
         **DT,
     },
-    ("mc", "random_forest", False) : {
+    ("mc", "random_forest", True) : {
         **common,
         **mc_basic,
+        **mc_proc_lrn,
         **RF,
     },
-    ("mc", "xg_boost", False) : {
+    ("mc", "xg_boost", True) : {
         **common,
         **mc_basic,
+        **mc_proc_lrn,
         **XGB,
     },
-    ("mc", "stand", False) : {
+    ("mc", "stand", True) : {
         **common,
         **mc_basic,
+        **mc_proc_lrn,
         **STAND,  
+    },
+    ("mc", "stand_hs", True) : {
+        **common,
+        **mc_basic,
+        **mc_proc_lrn,
+        **STAND_HS,  
     },
     ("mc", "stand-relaxed", False) : {
         **common,
@@ -121,11 +190,26 @@ agent_configs = {
         **proc_lrn,
 
         # Turn off unordered groups... causing BAD ACTION error
-        "implicit_reward_kinds" : None,
+        # "implicit_reward_kinds" : None,
         # Slim down features
-        "extra_features" : ["RemoveAll", "SkillCandidates","Match"],
+        # "extra_features" : ["RemoveAll", "SkillCandidates","Match"],
 
     },
+
+    ("mc", "stand_hs", True) : {
+        **common,
+        **mc_basic,
+        **mc_proc_lrn,
+        **STAND,  
+        **proc_lrn,
+
+        # Turn off unordered groups... causing BAD ACTION error
+        # "implicit_reward_kinds" : None,
+        # Slim down features
+        # "extra_features" : ["RemoveAll", "SkillCandidates","Match"],
+
+    },
+
 
     # Frac
     ("frac", "decision_tree", False) : {
@@ -147,6 +231,11 @@ agent_configs = {
         **common,
         **frac_basic,
         **STAND,  
+    },
+    ("frac", "stand_hs", False) : {
+        **common,
+        **frac_basic,
+        **STAND_HS,  
     },
     ("frac", "stand-relaxed", False) : {
         **common,
