@@ -4,6 +4,12 @@ import numpy as np
 class VSSMWrapper(VSSM):
     classes_ = [0,1]
 
+    def __init__(self):
+        self.vssm = VSSM()
+
+    def reset(self):
+        self.vssm = VSSM()
+
     def _arr_to_d(self, x_nom):
         d = {}
         for i,x in enumerate(x_nom):
@@ -11,13 +17,13 @@ class VSSMWrapper(VSSM):
         return d
     def ifit(self, x_nom, y):
         d = self._arr_to_d(x_nom)
-        return super().ifit(d, y==1)
+        return self.vssm.ifit(d, y==1)
 
     def predict(self, X_nom):
         ys = np.zeros(len(X_nom), dtype=np.int64)
         for i, x_nom in enumerate(X_nom):
             d = self._arr_to_d(x_nom)
-            ys[i] = 1 if super().predict(d) else 0
+            ys[i] = 1 if self.vssm.predict(d) else 0
         return ys
 
     def predict_proba(self, X_nom):
@@ -25,7 +31,7 @@ class VSSMWrapper(VSSM):
         for i, x_nom in enumerate(X_nom):
             d = self._arr_to_d(x_nom)
             # p = super().score(d)
-            p = super().predict(d)
+            p = self.vssm.predict(d)
             probs[i,0] = 1.0-p
             probs[i,1] = p
         return probs
@@ -33,7 +39,7 @@ class VSSMWrapper(VSSM):
     def score(self, x_nom):
         probs = np.zeros(2)
         d = self._arr_to_d(x_nom)
-        return super().score(d)
+        return self.vssm.score(d)
 
 
 
