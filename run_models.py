@@ -266,6 +266,10 @@ def dt_cert_fn(classifier, X_nom_subset):
     preds = classifier.predict(X_nom_subset)
     return np.where(preds==1, 1.0, -1.0)
 
+def dt_hs_cert_fn(classifier, X_nom_subset):
+    preds = classifier.predict(X_nom_subset, None)
+    return np.where(preds==1, 1.0, -1.0)
+
 lam_p = 25.0
 lam_e = 25.0
 lam_l = 50.0
@@ -299,11 +303,11 @@ foil_kwargs = {
 
 
 models = {
-    "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_SC" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover"), 
         # "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    "stand_active" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+    # "stand_active" : {"model": STANDClassifier(**s_kwargs), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
     # "stand_nos" : {"model": STANDClassifier(**s_kwargs, w_path_slip=False), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
     # "stand_p" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
@@ -321,11 +325,11 @@ models = {
     # "stand_p_e_l_SC" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    "stand_p_e_l_SC_active" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
+    # "stand_p_e_l_SC_active" : {"model": STANDClassifier(**s_kwargs, fit_method="sequential_cover", lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
     
-    "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
-        "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
+    # "stand_p_e_l" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
+    #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
     # "stand_p_e_l_active" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l), 
     #     "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn, "active_lrn" : True},
@@ -373,15 +377,16 @@ models = {
     # "stand_sl40" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.4), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
     # "stand_sl50" : {"model": STANDClassifier(**s_kwargs, lam_p=lam_p, lam_e=lam_e, lam_l=lam_l, slip=0.5), "is_stand" : True, "one_hot" : False, "cert_fn" : stand_cert_fn},
 
-    "xg_boost" : {"model": XGBClassifier(base_score=0.5), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
-    "xg_boost_active" : {"model": XGBClassifier(base_score=0.5), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
+    # "xg_boost" : {"model": XGBClassifier(base_score=0.5), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn},
+    # "xg_boost_active" : {"model": XGBClassifier(base_score=0.5), "is_stand" : False, "one_hot" : True, "cert_fn" : xg_cert_fn, "active_lrn" : True},
 
-    "vssm" : {"model" : VSSMWrapper(), "is_stand" : False, "one_hot" : False, "cert_fn" : xg_cert_fn, "ifit": True},
+    # "vssm" : {"model" : VSSMWrapper(), "is_stand" : False, "one_hot" : False, "cert_fn" : xg_cert_fn, "ifit": True},
 
-    "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
-    "random_forest_active" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn, "active_lrn" : True},
+    # "random_forest" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn},
+    # "random_forest_active" : {"model": RandomForestClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : rf_cert_fn, "active_lrn" : True},
 
     "decision_tree" : {"model": DecisionTreeClassifier(), "is_stand" : False, "one_hot" : True, "cert_fn" : dt_cert_fn},
+    "decision_tree_hs" : {"model": TreeClassifier(lam_p=lam_p), "is_stand" : True, "one_hot" : True, "cert_fn" : dt_hs_cert_fn},
     # "decision_tree_s" : {"model": TreeClassifier(), "is_stand" : True, "one_hot" : True, "cert_fn" : dt_cert_fn},
 
     # "stand_dyn" : {"model": STANDClassifier(split_choice="dyn_all_near_max", lam_p=lam_l, lam_e=lam_e, lam_l=lam_l, pred_kind="probs"),
@@ -707,7 +712,7 @@ def gen_data(n_train=100, n_test=2000):
                             # conj_len= lambda : min_one_possion(1.15), 
                             conj_len= lambda : min_one_possion(2), 
                             # num_conj= 1,
-                            conj_len=2,
+                            # conj_len=2,
                             dupl_lit_prob=0.0,
                             conj_probs=.28,
 
@@ -752,7 +757,8 @@ def run_and_save_stats(models):
         stats_by_model[name] = stats
 
     # dirname = "e_hyper"
-    dirname = "no_adj"
+    # dirname = "no_adj"
+    dirname = "dt_hs_only"
     os.makedirs(dirname, exist_ok=True)    
     with open(f"{dirname}/run_{time}", 'wb+') as f:
         pickle.dump(stats_by_model, f, protocol=pickle.HIGHEST_PROTOCOL)

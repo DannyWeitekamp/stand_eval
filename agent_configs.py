@@ -87,6 +87,14 @@ DT = {
     "when_learner": "decision_tree",
 }
 
+DT_HS = {
+    "when_learner": "decision_tree",
+    "when_args" : {
+        **common['when_args'],
+        "lam_p" : 25.0,
+    }
+}
+
 STAND = {
     "when_learner": "stand",
     "which_learner": "when_prediction",
@@ -153,6 +161,12 @@ agent_configs = {
         **mc_proc_lrn,
         **DT,
     },
+    ("mc", "decision_tree_hs", True) : {
+        **common,
+        **mc_basic,
+        **mc_proc_lrn,
+        **DT_HS,
+    },
     ("mc", "random_forest", True) : {
         **common,
         **mc_basic,
@@ -216,6 +230,11 @@ agent_configs = {
         **common,
         **frac_basic,
         **DT,
+    },
+    ("frac", "decision_tree_hs", False) : {
+        **common,
+        **frac_basic,
+        **DT_HS,
     },
     ("frac", "random_forest", False) : {
         **common,

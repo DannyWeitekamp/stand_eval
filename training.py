@@ -293,7 +293,7 @@ def train_reps(domain, when, use_proc, active=False, n_prob=100, reps=40, start=
             stats = queue.get()
             p.join() 
         else:
-            print("THIS HAPPNED")
+            # print("THIS HAPPNED")
             stats = train_or_load_rep(*args)
         
         # stats, wp_stats, cert_stats = train_or_load_rep(
@@ -380,6 +380,8 @@ if __name__ == "__main__":
         model = "xg_boost"
     elif("d" in sys.argv):
         model = "decision_tree"
+    elif("dh" in sys.argv):
+        model = "decision_tree_hs"
 
     use_proc = False
     if("p" in sys.argv):

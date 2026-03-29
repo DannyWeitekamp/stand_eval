@@ -388,8 +388,12 @@ def avg_stats(stats_list, ignore=['certainties', 'when_preds']):
     
     tot_stat_d = {}
     for k,v in accum_d.items():
-        # print(k, v)
+        #print(k, v)
         tot_stat_d[k] = {"avg" : np.nanmean(v,axis=0),
                          "std" : np.nanstd(v,axis=0),
                          "N"  : len(v)}
+        if(k  == "completeness"):
+            print("RECALC THIS!", len(v))
+            print(np.sum(np.equal(v, 1.0), axis=0).shape)
+            tot_stat_d[k].update({"is_100%" : np.sum(np.equal(v, 1.0), axis=0)})
     return tot_stat_d
