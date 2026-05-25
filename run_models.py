@@ -770,19 +770,19 @@ def run_and_save_stats(models):
 # seed = 8931
 # np.random.seed(seed)
 # seeds = np.arange(100)
+if __name__ == "__main__":
+    import faulthandler
+    faulthandler.enable()
 
-import faulthandler
-faulthandler.enable()
+    for i in range(100):
 
-for i in range(100):
-
-    # seed = int(10000*py_random())
-    # seed = 5545
-    # seed = 4855
-    # seed = 8931
-    np.random.seed(i+23) # Has problem w/ diff vals
-    # np.random.seed(i+24)
-    print("------------------------------------")
+        # seed = int(10000*py_random())
+        # seed = 5545
+        # seed = 4855
+        # seed = 8931
+        np.random.seed(i+23) # Has problem w/ diff vals
+        # np.random.seed(i+24)
+        print("------------------------------------")
     run_and_save_stats(models)
 # X_one_hot = one_hot_encoder.transform(X).toarray()
 
